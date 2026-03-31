@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "241052728524",
+    "project_id": "calmacoffeeapp",
+    "storage_bucket": "calmacoffeeapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:241052728524:android:4e3c43001eecd2bfe45669",
+        "android_client_info": {
+          "package_name": "com.qwertyarin.gymapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXWdImCE-IT8vXNe0bQ-eHL6uqwJY1etw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
