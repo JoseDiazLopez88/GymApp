@@ -1,9 +1,10 @@
 import * as Google from 'expo-auth-session/providers/google';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { GoogleAuthProvider, signInWithCredential, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { GoogleAuthProvider, signInWithCredential, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ImageBackground, Image, Linking, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, ImageBackground, Image, Linking, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { auth, db, saveUserToFirestore } from '../../firebaseConfig';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -58,9 +59,41 @@ export default function OnboardingScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  
+  // Estado para videos
+  const [videoFilter, setVideoFilter] = useState('Todos');
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setProfileEmail(user.email || '');
+        setFullName(user.displayName || user.email?.split('@')[0] || 'Usuario');
+        
+        try {
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            if (data.displayName) setFullName(data.displayName);
+            if (data.name) setFullName(data.name); // if they registered with "name" instead
+            if (data.email) setProfileEmail(data.email);
+          }
+        } catch(e) { console.log(e); }
+
+        setCurrentScreen((prev) => {
+          if (prev === 'welcome' || prev === 'login') return 'home';
+          return prev;
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: '241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com',
+    androidClientId: '241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com',
+    iosClientId: '241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com',
+    selectAccount: true,
   });
 
   // Efecto para manejar la respuesta de Google
@@ -88,6 +121,33 @@ export default function OnboardingScreen() {
         .catch((error) => Alert.alert("Error Firebase", error.message));
     }
   }, [response]);
+
+  // Función auxiliar para Google Login Web vs Native
+  const handleGoogleLogin = () => {
+    if (Platform.OS === 'web') {
+      console.log("Iniciando Google Login via Popup...");
+      const provider = new GoogleAuthProvider();
+      signInWithPopup(auth, provider)
+        .then(async (result) => {
+          await saveUserToFirestore(result.user.uid, {
+            email: result.user.email || '',
+            displayName: result.user.displayName || result.user.email?.split('@')[0] || '',
+            photoURL: result.user.photoURL || '',
+          });
+          Alert.alert("¡Éxito!", `Bienvenido ${result.user.email}`);
+          setCurrentScreen('home');
+        })
+        .catch((error) => {
+          console.error("Popup Error:", error);
+          if (error.code !== 'auth/popup-closed-by-user') {
+             Alert.alert("Error Google Auth", error.message);
+          }
+        });
+    } else {
+      console.log("Iniciando Google Login via Expo AuthSession...");
+      promptAsync();
+    }
+  };
 
   // Función para manejar login con email
   const handleEmailLogin = () => {
@@ -165,7 +225,7 @@ export default function OnboardingScreen() {
   const renderWelcomeScreen = () => (
     <>
       <View style={styles.topSection}>
-        <Text style={styles.welcomeText}>Welcome to</Text>
+        <Text style={styles.welcomeText}>Bienvenido a</Text>
         
         <View style={styles.logoContainer}>
           <Text style={styles.fbLogo}>FB</Text>
@@ -177,7 +237,7 @@ export default function OnboardingScreen() {
         style={styles.button} 
         onPress={() => setCurrentScreen('login')}
       >
-        <Text style={styles.buttonText}>GET STARTED</Text>
+        <Text style={styles.buttonText}>COMENZAR</Text>
       </TouchableOpacity>
     </>
   );
@@ -188,10 +248,10 @@ export default function OnboardingScreen() {
         style={styles.backButton}
         onPress={() => setCurrentScreen('welcome')}
       >
-        <Text style={styles.backButtonText}>← Back</Text>
+        <Text style={styles.backButtonText}>← Volver</Text>
       </TouchableOpacity>
 
-      <Text style={styles.headerTitle}>Log In</Text>
+      <Text style={styles.headerTitle}>Iniciar Sesión</Text>
       
       <View style={styles.authCard}>
         <Text style={styles.label}>Email</Text>
@@ -221,23 +281,20 @@ export default function OnboardingScreen() {
         onPress={handleEmailLogin} 
         disabled={loading}
       >
-        {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>Log In</Text>}
+        {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>Entrar</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.googleBtn} 
-        onPress={() => {
-          console.log("Iniciando Google Login...");
-          promptAsync();
-        }} 
-        disabled={!request}
+        onPress={handleGoogleLogin} 
+        disabled={Platform.OS !== 'web' && !request}
       >
         <Text style={styles.googleText}>INICIAR CON GOOGLE</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => setCurrentScreen('register')} style={{marginTop: 20}}>
         <Text style={{color: '#D0FD3E', textAlign: 'center'}}>
-          Don't have an account? Sign Up
+          ¿No tienes cuenta? Regístrate
         </Text>
       </TouchableOpacity>
     </View>
@@ -249,13 +306,13 @@ export default function OnboardingScreen() {
         style={styles.backButton}
         onPress={() => setCurrentScreen('login')}
       >
-        <Text style={styles.backButtonText}>← Back</Text>
+        <Text style={styles.backButtonText}>← Volver</Text>
       </TouchableOpacity>
 
-      <Text style={styles.headerTitle}>CREATE ACCOUNT</Text>
+      <Text style={styles.headerTitle}>CREAR CUENTA</Text>
       
       <View style={styles.authCard}>
-        <Text style={styles.label}>Email Address</Text>
+        <Text style={styles.label}>Correo Electrónico</Text>
         <TextInput 
           style={styles.input} 
           placeholder="example@example.com" 
@@ -266,7 +323,7 @@ export default function OnboardingScreen() {
           keyboardType="email-address"
         />
         
-        <Text style={styles.label}>Password</Text>
+        <Text style={styles.label}>Contraseña</Text>
         <TextInput 
           style={styles.input} 
           placeholder="Mínimo 6 caracteres" 
@@ -276,7 +333,7 @@ export default function OnboardingScreen() {
           value={registerPassword} 
         />
 
-        <Text style={styles.label}>Confirm Password</Text>
+        <Text style={styles.label}>Confirmar Contraseña</Text>
         <TextInput 
           style={styles.input} 
           placeholder="Repite tu contraseña" 
@@ -292,7 +349,7 @@ export default function OnboardingScreen() {
         onPress={handleRegister} 
         disabled={registerLoading}
       >
-        {registerLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>Sign Up</Text>}
+        {registerLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>Registrarse</Text>}
       </TouchableOpacity>
 
       <View style={styles.dividerContainer}>
@@ -303,18 +360,15 @@ export default function OnboardingScreen() {
 
       <TouchableOpacity 
         style={styles.googleBtn} 
-        onPress={() => {
-          console.log("Iniciando Google Login...");
-          promptAsync();
-        }} 
-        disabled={!request}
+        onPress={handleGoogleLogin} 
+        disabled={Platform.OS !== 'web' && !request}
       >
         <Text style={styles.googleText}>G</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => setCurrentScreen('login')} style={{marginTop: 20}}>
         <Text style={{color: '#D0FD3E', textAlign: 'center'}}>
-          ¿Ya tienes cuenta? Log in
+          ¿Ya tienes cuenta? Iniciar Sesión
         </Text>
       </TouchableOpacity>
     </View>
@@ -324,36 +378,36 @@ export default function OnboardingScreen() {
     const steps = [
       // Paso 0: Gender
       {
-        title: "What's Your Gender",
-        subtitle: "Consistency Is The Key To Progress. Don't Give Up!",
+        title: "¿Cuál es tu género?",
+        subtitle: "La constancia es la clave del progreso. ¡No te rindas!",
         content: (
           <>
-            <Text style={styles.setupSubtitle}>Consistency Is The Key To Progress. Don't Give Up!</Text>
+            <Text style={styles.setupSubtitle}>La constancia es la clave del progreso. ¡No te rindas!</Text>
             <Text style={styles.setupDescription}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+              Cuéntanos un poco sobre ti para personalizar tu experiencia.
             </Text>
             <TouchableOpacity 
               style={[styles.setupOption, gender === 'male' && styles.selectedOption]} 
               onPress={() => setGender('male')}
             >
-              <Text style={[styles.setupOptionText, gender === 'male' && styles.selectedOptionText]}>Male</Text>
+              <Text style={[styles.setupOptionText, gender === 'male' && styles.selectedOptionText]}>Hombre</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.setupOption, gender === 'female' && styles.selectedOption]} 
               onPress={() => setGender('female')}
             >
-              <Text style={[styles.setupOptionText, gender === 'female' && styles.selectedOptionText]}>Female</Text>
+              <Text style={[styles.setupOptionText, gender === 'female' && styles.selectedOptionText]}>Mujer</Text>
             </TouchableOpacity>
           </>
         )
       },
       // Paso 1: Age
       {
-        title: "How Old Are You?",
+        title: "¿Cuántos años tienes?",
         content: (
           <>
             <Text style={styles.setupDescription}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+              Esto nos ayudará a crear un plan a tu medida.
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ageScroll}>
               {[26,27,28,29,30].map((num) => (
@@ -371,7 +425,7 @@ export default function OnboardingScreen() {
       },
       // Paso 2: Weight
       {
-        title: "What is Your Weight?",
+        title: "¿Cuál es tu peso?",
         content: (
           <>
             <View style={styles.unitToggle}>
@@ -404,7 +458,7 @@ export default function OnboardingScreen() {
       },
       // Paso 3: Height
       {
-        title: "What is Your Height?",
+        title: "¿Cuál es tu altura?",
         content: (
           <>
             <Text style={styles.unitDisplay}>cm</Text>
@@ -557,7 +611,7 @@ export default function OnboardingScreen() {
             }
           }}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>← Volver</Text>
         </TouchableOpacity>
 
         <ScrollView 
@@ -574,7 +628,7 @@ export default function OnboardingScreen() {
             onPress={handleContinue}
           >
             <Text style={[styles.continueButtonText, isLastStep && styles.finishButtonText]}>
-              {isLastStep ? 'START MY JOURNEY' : 'Continue'}
+              {isLastStep ? 'Finalizar' : 'Continuar'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -1114,35 +1168,34 @@ export default function OnboardingScreen() {
     }
 
     const videos: Video[] = [
-      { id: 1, title: 'Full Body Workout for Beginners', duration: '20:00', thumbnail: 'https://img.youtube.com/vi/UItWltVZZmE/mqdefault.jpg', level: 'Beginner', youtubeUrl: 'https://www.youtube.com/watch?v=UItWltVZZmE', channel: 'MadFit' },
-      { id: 2, title: 'Abs Workout - 10 Minutes', duration: '10:25', thumbnail: 'https://img.youtube.com/vi/1919eTCoESo/mqdefault.jpg', level: 'Beginner', youtubeUrl: 'https://www.youtube.com/watch?v=1919eTCoESo', channel: 'THENX' },
-      { id: 3, title: 'Chest Workout at Home', duration: '15:30', thumbnail: 'https://img.youtube.com/vi/BkS1-El_WlE/mqdefault.jpg', level: 'Intermediate', youtubeUrl: 'https://www.youtube.com/watch?v=BkS1-El_WlE', channel: 'AthleanX' },
-      { id: 4, title: 'Leg Day - Complete Guide', duration: '18:45', thumbnail: 'https://img.youtube.com/vi/Kzag-5VFaQI/mqdefault.jpg', level: 'Intermediate', youtubeUrl: 'https://www.youtube.com/watch?v=Kzag-5VFaQI', channel: 'Jeff Nippard' },
-      { id: 5, title: 'HIIT Cardio - Fat Burn', duration: '25:00', thumbnail: 'https://img.youtube.com/vi/ml6cT4AZdqI/mqdefault.jpg', level: 'Advanced', youtubeUrl: 'https://www.youtube.com/watch?v=ml6cT4AZdqI', channel: 'Fitness Blender' },
-      { id: 6, title: 'Back & Biceps Workout', duration: '22:15', thumbnail: 'https://img.youtube.com/vi/eE7dzM0jhfk/mqdefault.jpg', level: 'Intermediate', youtubeUrl: 'https://www.youtube.com/watch?v=eE7dzM0jhfk', channel: 'Jeremy Ethier' },
-      { id: 7, title: 'Stretching for Flexibility', duration: '12:00', thumbnail: 'https://img.youtube.com/vi/g_tea8ZNk5A/mqdefault.jpg', level: 'Beginner', youtubeUrl: 'https://www.youtube.com/watch?v=g_tea8ZNk5A', channel: 'Blogilates' },
-      { id: 8, title: 'Shoulder Workout - Build Mass', duration: '16:30', thumbnail: 'https://img.youtube.com/vi/2Vprklw8cu8/mqdefault.jpg', level: 'Advanced', youtubeUrl: 'https://www.youtube.com/watch?v=2Vprklw8cu8', channel: 'AthleanX' },
-      { id: 9, title: 'Core Strength for Beginners', duration: '14:00', thumbnail: 'https://img.youtube.com/vi/DHD1-2P94DI/mqdefault.jpg', level: 'Beginner', youtubeUrl: 'https://www.youtube.com/watch?v=DHD1-2P94DI', channel: 'Chloe Ting' },
-      { id: 10, title: 'Push Up Progression Guide', duration: '11:45', thumbnail: 'https://img.youtube.com/vi/0pkjOk0EiAk/mqdefault.jpg', level: 'Beginner', youtubeUrl: 'https://www.youtube.com/watch?v=0pkjOk0EiAk', channel: 'THENX' },
-      { id: 11, title: 'Arm Workout No Equipment', duration: '15:00', thumbnail: 'https://img.youtube.com/vi/Qia2fJGQ_Yg/mqdefault.jpg', level: 'Beginner', youtubeUrl: 'https://www.youtube.com/watch?v=Qia2fJGQ_Yg', channel: 'MadFit' },
-      { id: 12, title: 'Calisthenics Full Routine', duration: '30:00', thumbnail: 'https://img.youtube.com/vi/UoC_O3HzsH0/mqdefault.jpg', level: 'Advanced', youtubeUrl: 'https://www.youtube.com/watch?v=UoC_O3HzsH0', channel: 'THENX' },
+      { id: 1, title: 'Cuerpo Completo Principiantes', duration: '20:00', thumbnail: 'https://img.youtube.com/vi/UItWltVZZmE/mqdefault.jpg', level: 'Principiante', youtubeUrl: 'https://www.youtube.com/watch?v=UItWltVZZmE', channel: 'MadFit' },
+      { id: 2, title: 'Abdominales - 10 Minutos', duration: '10:25', thumbnail: 'https://img.youtube.com/vi/1919eTCoESo/mqdefault.jpg', level: 'Principiante', youtubeUrl: 'https://www.youtube.com/watch?v=1919eTCoESo', channel: 'THENX' },
+      { id: 3, title: 'Pectorales en Casa', duration: '15:30', thumbnail: 'https://img.youtube.com/vi/BkS1-El_WlE/mqdefault.jpg', level: 'Intermedio', youtubeUrl: 'https://www.youtube.com/watch?v=BkS1-El_WlE', channel: 'AthleanX' },
+      { id: 4, title: 'Día de Piernas - Guía', duration: '18:45', thumbnail: 'https://img.youtube.com/vi/Kzag-5VFaQI/mqdefault.jpg', level: 'Intermedio', youtubeUrl: 'https://www.youtube.com/watch?v=Kzag-5VFaQI', channel: 'Jeff Nippard' },
+      { id: 5, title: 'Cardio HIIT - Quema Grasa', duration: '25:00', thumbnail: 'https://img.youtube.com/vi/ml6cT4AZdqI/mqdefault.jpg', level: 'Avanzado', youtubeUrl: 'https://www.youtube.com/watch?v=ml6cT4AZdqI', channel: 'Fitness Blender' },
+      { id: 6, title: 'Espalda y Bíceps', duration: '22:15', thumbnail: 'https://img.youtube.com/vi/eE7dzM0jhfk/mqdefault.jpg', level: 'Intermedio', youtubeUrl: 'https://www.youtube.com/watch?v=eE7dzM0jhfk', channel: 'Jeremy Ethier' },
+      { id: 7, title: 'Estiramiento y Flexibilidad', duration: '12:00', thumbnail: 'https://img.youtube.com/vi/g_tea8ZNk5A/mqdefault.jpg', level: 'Principiante', youtubeUrl: 'https://www.youtube.com/watch?v=g_tea8ZNk5A', channel: 'Blogilates' },
+      { id: 8, title: 'Hombros - Ganar Masa', duration: '16:30', thumbnail: 'https://img.youtube.com/vi/2Vprklw8cu8/mqdefault.jpg', level: 'Avanzado', youtubeUrl: 'https://www.youtube.com/watch?v=2Vprklw8cu8', channel: 'AthleanX' },
+      { id: 9, title: 'Fortalecimiento de Core Bás.', duration: '14:00', thumbnail: 'https://img.youtube.com/vi/DHD1-2P94DI/mqdefault.jpg', level: 'Principiante', youtubeUrl: 'https://www.youtube.com/watch?v=DHD1-2P94DI', channel: 'Chloe Ting' },
+      { id: 10, title: 'Guía de Flexiones (Push Ups)', duration: '11:45', thumbnail: 'https://img.youtube.com/vi/0pkjOk0EiAk/mqdefault.jpg', level: 'Principiante', youtubeUrl: 'https://www.youtube.com/watch?v=0pkjOk0EiAk', channel: 'THENX' },
+      { id: 11, title: 'Brazos sin equipo - 15 Min', duration: '15:00', thumbnail: 'https://img.youtube.com/vi/Qia2fJGQ_Yg/mqdefault.jpg', level: 'Principiante', youtubeUrl: 'https://www.youtube.com/watch?v=Qia2fJGQ_Yg', channel: 'MadFit' },
+      { id: 12, title: 'Rutina Completa Calistenia', duration: '30:00', thumbnail: 'https://img.youtube.com/vi/UoC_O3HzsH0/mqdefault.jpg', level: 'Avanzado', youtubeUrl: 'https://www.youtube.com/watch?v=UoC_O3HzsH0', channel: 'THENX' },
     ];
 
-    const [videoFilter, setVideoFilter] = useState('All');
-    const filteredVideos = videoFilter === 'All' ? videos : videos.filter(v => v.level === videoFilter);
+    const filteredVideos = videoFilter === 'Todos' ? videos : videos.filter(v => v.level === videoFilter);
 
     return (
       <View style={styles.videosContainer}>
         <View style={styles.profileHeader}>
           <TouchableOpacity onPress={() => setCurrentScreen('home')}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Text style={styles.backButtonText}>← Volver</Text>
           </TouchableOpacity>
-          <Text style={styles.profileHeaderTitle}>Workout Videos</Text>
+          <Text style={styles.profileHeaderTitle}>Videos de Entrenamiento</Text>
           <View style={{width: 40}} />
         </View>
 
         <View style={styles.videoFilters}>
-          {['All', 'Beginner', 'Intermediate', 'Advanced'].map((filter) => (
+          {['Todos', 'Principiante', 'Intermedio', 'Avanzado'].map((filter) => (
             <TouchableOpacity
               key={filter}
               style={[styles.filterChip, videoFilter === filter && styles.activeFilterChip]}
@@ -1174,9 +1227,9 @@ export default function OnboardingScreen() {
                 <View style={styles.videoMeta}>
                   <Text style={[
                     styles.videoLevel, 
-                    item.level === 'Beginner' && styles.beginnerLevel,
-                    item.level === 'Intermediate' && styles.intermediateLevel,
-                    item.level === 'Advanced' && styles.advancedLevel
+                    item.level === 'Principiante' && styles.beginnerLevel,
+                    item.level === 'Intermedio' && styles.intermediateLevel,
+                    item.level === 'Avanzado' && styles.advancedLevel
                   ]}>{item.level}</Text>
                   <Text style={styles.videoDuration}>{item.duration}</Text>
                 </View>
@@ -1202,8 +1255,8 @@ export default function OnboardingScreen() {
         {/* Header con saludo y menú */}
         <View style={styles.homeHeader}>
           <View>
-            <Text style={styles.greeting}>Hi, {fullName.split(' ')[0]}</Text>
-            <Text style={styles.subGreeting}>It's time to challenge your friends.</Text>
+            <Text style={styles.greeting}>Hola, {fullName.split(' ')[0]}</Text>
+            <Text style={styles.subGreeting}>Es hora de entrenar.</Text>
           </View>
           <TouchableOpacity 
             style={styles.profileIcon}
@@ -1216,13 +1269,13 @@ export default function OnboardingScreen() {
         {/* Challenge Tabs */}
         <View style={styles.challengeTabs}>
           <TouchableOpacity style={[styles.challengeTab, styles.activeTab]}>
-            <Text style={[styles.tabText, styles.activeTabText]}>Daily Challenges</Text>
+            <Text style={[styles.tabText, styles.activeTabText]}>Retos Diarios</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.challengeTab}>
-            <Text style={styles.tabText}>Weekly Challenges</Text>
+            <Text style={styles.tabText}>Semanales</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.challengeTab}>
-            <Text style={styles.tabText}>Monthly Challenges</Text>
+            <Text style={styles.tabText}>Mensuales</Text>
           </TouchableOpacity>
         </View>
 
@@ -1232,18 +1285,18 @@ export default function OnboardingScreen() {
           onPress={() => setCurrentScreen('beginnerVideos')}
         >
           <View style={styles.videoCardContent}>
-            <Text style={styles.videoCardTitle}>🎥 Beginner Videos</Text>
-            <Text style={styles.videoCardSubtitle}>509 videos for beginners</Text>
+            <Text style={styles.videoCardTitle}>🎥 Principiantes</Text>
+            <Text style={styles.videoCardSubtitle}>509 videos para ti</Text>
             <View style={styles.videoCardButton}>
-              <Text style={styles.videoCardButtonText}>Start Learning</Text>
+              <Text style={styles.videoCardButtonText}>Ver Rutinas</Text>
             </View>
           </View>
         </TouchableOpacity>
 
         {/* Weekly Challenge Card */}
         <View style={styles.challengeCard}>
-          <Text style={styles.challengeCardTitle}>Weekly Challenge</Text>
-          <Text style={styles.challengeNumber}>Challenge #1</Text>
+          <Text style={styles.challengeCardTitle}>Reto Semanal</Text>
+          <Text style={styles.challengeNumber}>Reto #1</Text>
           <View style={styles.challengeProgress}>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: '60%' }]} />
@@ -1251,7 +1304,7 @@ export default function OnboardingScreen() {
             <Text style={styles.progressText}>60%</Text>
           </View>
           <TouchableOpacity style={styles.joinButton}>
-            <Text style={styles.joinButtonText}>Join Challenge</Text>
+            <Text style={styles.joinButtonText}>Unirse al Reto</Text>
           </TouchableOpacity>
         </View>
 
@@ -1259,37 +1312,37 @@ export default function OnboardingScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>3</Text>
-            <Text style={styles.statLabel}>Days Streak</Text>
+            <Text style={styles.statLabel}>Días</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>450</Text>
-            <Text style={styles.statLabel}>Calories</Text>
+            <Text style={styles.statLabel}>Calorías</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>75</Text>
-            <Text style={styles.statLabel}>Minutes</Text>
+            <Text style={styles.statLabel}>Minutos</Text>
           </View>
         </View>
 
         {/* Articles & Tips */}
-        <Text style={styles.sectionTitle}>Articles & Tips</Text>
+        <Text style={styles.sectionTitle}>Artículos y Consejos</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.articlesScroll}>
           <TouchableOpacity style={styles.articleCard} onPress={() => Linking.openURL('https://www.healthline.com/nutrition/healthy-eating-tips')}>
             <Image source={{uri: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=300&h=200&fit=crop'}} style={styles.articleImageReal} />
-            <Text style={styles.articleTitle}>Healthy Meal Plans...</Text>
-            <Text style={styles.articleAuthor}>By Nutritionist</Text>
+            <Text style={styles.articleTitle}>Dietas Saludables</Text>
+            <Text style={styles.articleAuthor}>Por Nutricionista</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.articleCard} onPress={() => Linking.openURL('https://www.healthline.com/nutrition/pre-workout-nutrition')}>
             <Image source={{uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&h=200&fit=crop'}} style={styles.articleImageReal} />
-            <Text style={styles.articleTitle}>Pre-Workout Nutrition...</Text>
-            <Text style={styles.articleAuthor}>By Fitness Expert</Text>
+            <Text style={styles.articleTitle}>Nutrición Deportiva...</Text>
+            <Text style={styles.articleAuthor}>Por Experto</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.articleCard} onPress={() => Linking.openURL('https://www.healthline.com/health/fitness-exercise/morning-workout')}>
             <Image source={{uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop'}} style={styles.articleImageReal} />
-            <Text style={styles.articleTitle}>Morning Workout Tips...</Text>
-            <Text style={styles.articleAuthor}>By Coach Mike</Text>
+            <Text style={styles.articleTitle}>Entrenar de mañana...</Text>
+            <Text style={styles.articleAuthor}>Por Coach Mike</Text>
           </TouchableOpacity>
         </ScrollView>
       </ScrollView>
@@ -1298,7 +1351,7 @@ export default function OnboardingScreen() {
 <View style={styles.bottomNav}>
   <TouchableOpacity style={styles.navItem}>
     <Text style={[styles.navIcon, styles.activeNavIcon]}>🏠</Text>
-    <Text style={[styles.navText, styles.activeNavText]}>Home</Text>
+    <Text style={[styles.navText, styles.activeNavText]}>Inicio</Text>
   </TouchableOpacity>
   <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('beginnerVideos')}>
     <Text style={styles.navIcon}>🎥</Text>
@@ -1306,14 +1359,14 @@ export default function OnboardingScreen() {
   </TouchableOpacity>
   <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('favorites')}>
     <Text style={styles.navIcon}>❤️</Text>
-    <Text style={styles.navText}>Favorites</Text>
+    <Text style={styles.navText}>Favoritos</Text>
   </TouchableOpacity>
   <TouchableOpacity 
     style={styles.navItem}
     onPress={() => setMenuVisible(true)}
   >
     <Text style={styles.navIcon}>👤</Text>
-    <Text style={styles.navText}>Profile</Text>
+    <Text style={styles.navText}>Perfil</Text>
   </TouchableOpacity>
 </View>
 
