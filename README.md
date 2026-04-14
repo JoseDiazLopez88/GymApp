@@ -186,15 +186,7 @@ El archivo `firebaseConfig.ts` contiene la configuración de Firebase. Asegúrat
 
 ---
 
-## 📸 Capturas de Pantalla
 
-> *Próximamente — Insertar capturas de las pantallas principales*
-
-| Ejercicios | Chat | Mapa | Perfil |
-|:---:|:---:|:---:|:---:|
-| *screenshot* | *screenshot* | *screenshot* | *screenshot* |
-
----
 
 ## 🤝 Equipo de Desarrollo
 
