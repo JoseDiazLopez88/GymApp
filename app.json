@@ -1,4 +1,4 @@
-{
+s{
   "expo": {
     "name": "GymApp",
     "scheme": "gymapp",
@@ -35,7 +35,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyCm3om-rHSYFKa2-1hC68Brp_EyOte0JOw"
+          "apiKey": "$EXPO_PUBLIC_GOOGLE_MAPS_API_KEY"
         }
       }
     },
