@@ -202,10 +202,10 @@ Proyecto desarrollado por estudiantes como proyecto universitario:
 
 | Nombre | Rol |
 |--------|-----|
-| [Integrante 1] | Desarrollador Frontend |
-| [Integrante 2] | Desarrollador Backend |
-| [Integrante 3] | Diseño UX/UI |
-| [Integrante 4] | QA & Documentación |
+| Jeyner Chilón | Desarrollador Frontend |
+| Jeyner Chilón | Desarrollador Backend |
+| Jose Diaz | Diseño UX/UI |
+| Jose Diaz | QA & Documentación |
 
 ---
 
