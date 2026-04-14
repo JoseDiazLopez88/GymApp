@@ -186,15 +186,7 @@ El archivo `firebaseConfig.ts` contiene la configuración de Firebase. Asegúrat
 
 ---
 
-## 📸 Capturas de Pantalla
 
-> *Próximamente — Insertar capturas de las pantallas principales*
-
-| Ejercicios | Chat | Mapa | Perfil |
-|:---:|:---:|:---:|:---:|
-| *screenshot* | *screenshot* | *screenshot* | *screenshot* |
-
----
 
 ## 🤝 Equipo de Desarrollo
 
@@ -202,10 +194,10 @@ Proyecto desarrollado por estudiantes como proyecto universitario:
 
 | Nombre | Rol |
 |--------|-----|
-| [Integrante 1] | Desarrollador Frontend |
-| [Integrante 2] | Desarrollador Backend |
-| [Integrante 3] | Diseño UX/UI |
-| [Integrante 4] | QA & Documentación |
+| Jeyner Chilón | Desarrollador Frontend |
+| Jeyner Chilón | Desarrollador Backend |
+| Jose Diaz | Diseño UX/UI |
+| Jose Diaz | QA & Documentación |
 
 ---
 
