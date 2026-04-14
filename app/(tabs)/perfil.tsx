@@ -67,8 +67,8 @@ export default function PerfilScreen() {
 
   const handleLogout = () => {
     signOut(auth).then(() => {
-      // Navigate back to login by resetting state
       Alert.alert('Sesión cerrada', 'Has cerrado sesión correctamente');
+      router.replace('/');
     });
   };
 

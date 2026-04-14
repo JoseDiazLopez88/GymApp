@@ -89,15 +89,17 @@ export default function OnboardingScreen() {
           if (prev === 'welcome' || prev === 'login') return 'home';
           return prev;
         });
+      } else {
+        setCurrentScreen('welcome');
       }
     });
     return () => unsubscribe();
   }, []);
 
   const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: '241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com',
     webClientId: '241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com',
-    androidClientId: '241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com',
-    iosClientId: '241052728524-7srs6rqsdj0lcarglu5onir5n10nj41j.apps.googleusercontent.com',
+    androidClientId: '241052728524-rojtk2d0moml8dib0tn3lq2k6opdvsh5.apps.googleusercontent.com',
     selectAccount: true,
   });
 
@@ -1324,22 +1326,42 @@ export default function OnboardingScreen() {
             <Text style={styles.trainerMessage}>¡Empieza tu viaje de fitness corporal total con energía!</Text>
           </View>
 
-          {[1, 2, 3].map((week) => (
-            <View key={week} style={styles.weekContainer}>
-              <View style={styles.weekHeader}>
-                <Text style={styles.weekTitle}>⚡ SEMANA {week}</Text>
-                <Text style={styles.weekCount}>{week === 1 ? '1/7' : ''}</Text>
+          {Array.from({ length: Math.ceil((selectedChallenge?.days || 28) / 7) }).map((_, i) => {
+            const week = i + 1;
+            return (
+              <View key={week} style={styles.weekContainer}>
+                <View style={styles.weekHeader}>
+                  <Text style={styles.weekTitle}>⚡ SEMANA {week}</Text>
+                  <Text style={styles.weekCount}>{week === 1 ? '1/7' : ''}</Text>
+                </View>
+                <View style={styles.weekLineIndicator} />
+                <View style={styles.weekDaysGrid}>
+                  {[1, 2, 3, 4, 5, 6, 7].map((day) => {
+                    const dayNumber = (week - 1) * 7 + day;
+                    if (dayNumber > (selectedChallenge?.days || 28)) return <View key={day} style={{ width: 32 }} />; // Placeholder para mantener alineación
+                    return (
+                      <TouchableOpacity
+                        key={day}
+                        style={styles.dayCircle}
+                        onPress={() => {
+                          setSelectedRoutine({
+                            title: selectedChallenge?.title || 'DESAFÍO',
+                            img: selectedChallenge?.img || 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=500',
+                            duration: 8 + (dayNumber % 4) * 2, // Variar la duración un poco
+                            exercises: 8 + (dayNumber % 3) * 2, // Variar la cantidad de ejercicios
+                            day: dayNumber
+                          });
+                          setCurrentScreen('routineDetail');
+                        }}
+                      >
+                        {day === 7 ? <Text style={styles.trophyIcon}>🏆</Text> : <Text style={styles.dayText}>{day}</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-              <View style={styles.weekLineIndicator} />
-              <View style={styles.weekDaysGrid}>
-                {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-                  <TouchableOpacity key={day} style={styles.dayCircle}>
-                    {day === 7 ? <Text style={styles.trophyIcon}>🏆</Text> : <Text style={styles.dayText}>{day}</Text>}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          ))}
+            );
+          })}
           <View style={{ height: 100 }} />
         </ScrollView>
 
@@ -1392,8 +1414,18 @@ export default function OnboardingScreen() {
     };
 
     // Detect body part from routine title
-    const bodyPart = Object.keys(exercisesByType).find(k => selectedRoutine?.title?.includes(k)) || 'Brazo';
-    const defaultExercises = exercisesByType[bodyPart];
+    const bodyPart = Object.keys(exercisesByType).find(k =>
+      selectedRoutine?.title?.toLowerCase().includes(k.toLowerCase())
+    ) || 'Brazo';
+
+    const baseExercises = exercisesByType[bodyPart] || exercisesByType['Brazo'];
+    const exCount = selectedRoutine?.exercises || 10;
+
+    const defaultExercises = Array.from({ length: exCount }).map((_, i) => ({
+      ...baseExercises[i % baseExercises.length],
+      name: i >= baseExercises.length ? `${baseExercises[i % baseExercises.length].name} (Serie ${Math.floor(i / baseExercises.length) + 1})` : baseExercises[i % baseExercises.length].name,
+      uniqueKey: i.toString()
+    }));
 
     return (
       <View style={styles.routineDetailContainerWrapper}>
@@ -1411,7 +1443,7 @@ export default function OnboardingScreen() {
         </View>
 
         <View style={styles.routineContentCard}>
-          <Text style={styles.routineTitleDay}>1° DÍA</Text>
+          <Text style={styles.routineTitleDay}>{selectedRoutine?.day || 1}° DÍA</Text>
 
           <View style={styles.routineStatsRowFlex}>
             <View style={styles.routineStatBoxFlex}>
@@ -1431,15 +1463,15 @@ export default function OnboardingScreen() {
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
             {defaultExercises.map((ex, idx) => (
-              <View key={idx} style={styles.routineExerciseRowFlex}>
+              <TouchableOpacity key={ex.uniqueKey} style={styles.routineExerciseRowFlex} onPress={() => Linking.openURL(`https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' ejercicio tecnica')}`)}>
                 <Text style={styles.dragHandleTextEl}>≡</Text>
                 <Image source={{ uri: ex.img }} style={styles.routineExImgList} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.routineExNameList}>{ex.name}</Text>
                   <Text style={styles.routineExTimeList}>{ex.time}</Text>
                 </View>
-                <Text style={styles.swapIconTextEl}>⇄</Text>
-              </View>
+                <Text style={styles.swapIconTextEl}>▶</Text>
+              </TouchableOpacity>
             ))}
           </ScrollView>
 

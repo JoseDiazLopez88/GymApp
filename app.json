@@ -29,7 +29,9 @@
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "config": {
         "googleMaps": {
@@ -47,6 +49,11 @@
           "locationAlwaysAndWhenInUsePermission": "Permitir a GymApp acceder a tu ubicación."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "670b4b71-3c03-4ce0-b038-f6443587564f"
+      }
+    }
   }
 }
