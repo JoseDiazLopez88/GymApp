@@ -1,10 +1,10 @@
 import * as Google from 'expo-auth-session/providers/google';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { GoogleAuthProvider, signInWithCredential, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithPopup } from "firebase/auth";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signInWithEmailAndPassword, signInWithPopup, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, ImageBackground, Image, Linking, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, ImageBackground, Linking, Modal, Platform, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth, db, saveUserToFirestore } from '../../firebaseConfig';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -14,9 +14,12 @@ export default function OnboardingScreen() {
   const [currentScreen, setCurrentScreen] = useState('welcome'); // 'welcome', 'login', 'register', 'setup', 'home', 'profile', 'editProfile', 'favorites', 'settings', 'beginnerVideos', 'chat'
   const [setupStep, setSetupStep] = useState(0);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [favoritesCategory, setFavoritesCategory] = useState('upper body');
+  const [favoritesCategory, setFavoritesCategory] = useState('Rutinas');
   const [settingsSection, setSettingsSection] = useState('notifications');
-  
+  const [activeNavTab, setActiveNavTab] = useState('home');
+  const [activeChallengeTab, setActiveChallengeTab] = useState('Diarios');
+  const [selectedRoutine, setSelectedRoutine] = useState<any>(null);
+
   // Estados para login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -54,21 +57,23 @@ export default function OnboardingScreen() {
   const [darkThemeEnabled, setDarkThemeEnabled] = useState(false);
   const [powerSavingEnabled, setPowerSavingEnabled] = useState(false);
   const [language, setLanguage] = useState('English');
-  
+
   // Estados para password
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  
+
   // Estado para videos
   const [videoFilter, setVideoFilter] = useState('Todos');
+  const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
+  const [activeBodyTab, setActiveBodyTab] = useState('Brazo');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setProfileEmail(user.email || '');
         setFullName(user.displayName || user.email?.split('@')[0] || 'Usuario');
-        
+
         try {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
@@ -78,7 +83,7 @@ export default function OnboardingScreen() {
             if (data.name) setFullName(data.name); // if they registered with "name" instead
             if (data.email) setProfileEmail(data.email);
           }
-        } catch(e) { console.log(e); }
+        } catch (e) { console.log(e); }
 
         setCurrentScreen((prev) => {
           if (prev === 'welcome' || prev === 'login') return 'home';
@@ -140,7 +145,7 @@ export default function OnboardingScreen() {
         .catch((error) => {
           console.error("Popup Error:", error);
           if (error.code !== 'auth/popup-closed-by-user') {
-             Alert.alert("Error Google Auth", error.message);
+            Alert.alert("Error Google Auth", error.message);
           }
         });
     } else {
@@ -155,7 +160,7 @@ export default function OnboardingScreen() {
       Alert.alert("Atención", "Ingresa email y contraseña");
       return;
     }
-    
+
     setLoading(true);
     signInWithEmailAndPassword(auth, email, password)
       .then(async (userCredential) => {
@@ -226,15 +231,15 @@ export default function OnboardingScreen() {
     <>
       <View style={styles.topSection}>
         <Text style={styles.welcomeText}>Bienvenido a</Text>
-        
+
         <View style={styles.logoContainer}>
           <Text style={styles.fbLogo}>FB</Text>
           <Text style={styles.fitBodyText}>FITBODY</Text>
         </View>
       </View>
 
-      <TouchableOpacity 
-        style={styles.button} 
+      <TouchableOpacity
+        style={styles.button}
         onPress={() => setCurrentScreen('login')}
       >
         <Text style={styles.buttonText}>COMENZAR</Text>
@@ -244,7 +249,7 @@ export default function OnboardingScreen() {
 
   const renderLoginScreen = () => (
     <View style={styles.loginContainer}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => setCurrentScreen('welcome')}
       >
@@ -252,48 +257,48 @@ export default function OnboardingScreen() {
       </TouchableOpacity>
 
       <Text style={styles.headerTitle}>Iniciar Sesión</Text>
-      
+
       <View style={styles.authCard}>
         <Text style={styles.label}>Email</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="correo@ejemplo.com" 
+        <TextInput
+          style={styles.input}
+          placeholder="correo@ejemplo.com"
           placeholderTextColor="#666"
-          onChangeText={setEmail} 
-          value={email} 
+          onChangeText={setEmail}
+          value={email}
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        
+
         <Text style={styles.label}>Password</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="******" 
+        <TextInput
+          style={styles.input}
+          placeholder="******"
           placeholderTextColor="#666"
-          secureTextEntry 
-          onChangeText={setPassword} 
-          value={password} 
+          secureTextEntry
+          onChangeText={setPassword}
+          value={password}
         />
       </View>
 
-      <TouchableOpacity 
-        style={styles.loginBtn} 
-        onPress={handleEmailLogin} 
+      <TouchableOpacity
+        style={styles.loginBtn}
+        onPress={handleEmailLogin}
         disabled={loading}
       >
         {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>Entrar</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.googleBtn} 
-        onPress={handleGoogleLogin} 
+      <TouchableOpacity
+        style={styles.googleBtn}
+        onPress={handleGoogleLogin}
         disabled={Platform.OS !== 'web' && !request}
       >
         <Text style={styles.googleText}>INICIAR CON GOOGLE</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => setCurrentScreen('register')} style={{marginTop: 20}}>
-        <Text style={{color: '#D0FD3E', textAlign: 'center'}}>
+      <TouchableOpacity onPress={() => setCurrentScreen('register')} style={{ marginTop: 20 }}>
+        <Text style={{ color: '#D0FD3E', textAlign: 'center' }}>
           ¿No tienes cuenta? Regístrate
         </Text>
       </TouchableOpacity>
@@ -302,7 +307,7 @@ export default function OnboardingScreen() {
 
   const renderRegisterScreen = () => (
     <View style={styles.loginContainer}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => setCurrentScreen('login')}
       >
@@ -310,43 +315,43 @@ export default function OnboardingScreen() {
       </TouchableOpacity>
 
       <Text style={styles.headerTitle}>CREAR CUENTA</Text>
-      
+
       <View style={styles.authCard}>
         <Text style={styles.label}>Correo Electrónico</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="example@example.com" 
+        <TextInput
+          style={styles.input}
+          placeholder="example@example.com"
           placeholderTextColor="#666"
-          onChangeText={setRegisterEmail} 
-          value={registerEmail} 
+          onChangeText={setRegisterEmail}
+          value={registerEmail}
           autoCapitalize="none"
           keyboardType="email-address"
         />
-        
+
         <Text style={styles.label}>Contraseña</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Mínimo 6 caracteres" 
+        <TextInput
+          style={styles.input}
+          placeholder="Mínimo 6 caracteres"
           placeholderTextColor="#666"
-          secureTextEntry 
-          onChangeText={setRegisterPassword} 
-          value={registerPassword} 
+          secureTextEntry
+          onChangeText={setRegisterPassword}
+          value={registerPassword}
         />
 
         <Text style={styles.label}>Confirmar Contraseña</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Repite tu contraseña" 
+        <TextInput
+          style={styles.input}
+          placeholder="Repite tu contraseña"
           placeholderTextColor="#666"
-          secureTextEntry 
-          onChangeText={setConfirmPassword} 
-          value={confirmPassword} 
+          secureTextEntry
+          onChangeText={setConfirmPassword}
+          value={confirmPassword}
         />
       </View>
 
-      <TouchableOpacity 
-        style={styles.loginBtn} 
-        onPress={handleRegister} 
+      <TouchableOpacity
+        style={styles.loginBtn}
+        onPress={handleRegister}
         disabled={registerLoading}
       >
         {registerLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.loginBtnText}>Registrarse</Text>}
@@ -358,16 +363,16 @@ export default function OnboardingScreen() {
         <View style={styles.dividerLine} />
       </View>
 
-      <TouchableOpacity 
-        style={styles.googleBtn} 
-        onPress={handleGoogleLogin} 
+      <TouchableOpacity
+        style={styles.googleBtn}
+        onPress={handleGoogleLogin}
         disabled={Platform.OS !== 'web' && !request}
       >
         <Text style={styles.googleText}>G</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => setCurrentScreen('login')} style={{marginTop: 20}}>
-        <Text style={{color: '#D0FD3E', textAlign: 'center'}}>
+      <TouchableOpacity onPress={() => setCurrentScreen('login')} style={{ marginTop: 20 }}>
+        <Text style={{ color: '#D0FD3E', textAlign: 'center' }}>
           ¿Ya tienes cuenta? Iniciar Sesión
         </Text>
       </TouchableOpacity>
@@ -386,14 +391,14 @@ export default function OnboardingScreen() {
             <Text style={styles.setupDescription}>
               Cuéntanos un poco sobre ti para personalizar tu experiencia.
             </Text>
-            <TouchableOpacity 
-              style={[styles.setupOption, gender === 'male' && styles.selectedOption]} 
+            <TouchableOpacity
+              style={[styles.setupOption, gender === 'male' && styles.selectedOption]}
               onPress={() => setGender('male')}
             >
               <Text style={[styles.setupOptionText, gender === 'male' && styles.selectedOptionText]}>Hombre</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.setupOption, gender === 'female' && styles.selectedOption]} 
+            <TouchableOpacity
+              style={[styles.setupOption, gender === 'female' && styles.selectedOption]}
               onPress={() => setGender('female')}
             >
               <Text style={[styles.setupOptionText, gender === 'female' && styles.selectedOptionText]}>Mujer</Text>
@@ -410,9 +415,9 @@ export default function OnboardingScreen() {
               Esto nos ayudará a crear un plan a tu medida.
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ageScroll}>
-              {[26,27,28,29,30].map((num) => (
-                <TouchableOpacity 
-                  key={num} 
+              {[26, 27, 28, 29, 30].map((num) => (
+                <TouchableOpacity
+                  key={num}
                   style={[styles.ageOption, age === num.toString() && styles.selectedOption]}
                   onPress={() => setAge(num.toString())}
                 >
@@ -429,23 +434,23 @@ export default function OnboardingScreen() {
         content: (
           <>
             <View style={styles.unitToggle}>
-              <TouchableOpacity 
-                style={[styles.unitButton, weightUnit === 'KG' && styles.selectedUnit]} 
+              <TouchableOpacity
+                style={[styles.unitButton, weightUnit === 'KG' && styles.selectedUnit]}
                 onPress={() => setWeightUnit('KG')}
               >
                 <Text style={[styles.unitText, weightUnit === 'KG' && styles.selectedUnitText]}>KG</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.unitButton, weightUnit === 'LB' && styles.selectedUnit]} 
+              <TouchableOpacity
+                style={[styles.unitButton, weightUnit === 'LB' && styles.selectedUnit]}
                 onPress={() => setWeightUnit('LB')}
               >
                 <Text style={[styles.unitText, weightUnit === 'LB' && styles.selectedUnitText]}>LB</Text>
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.weightScroll}>
-              {[73,74,75,76,77].map((num) => (
-                <TouchableOpacity 
-                  key={num} 
+              {[73, 74, 75, 76, 77].map((num) => (
+                <TouchableOpacity
+                  key={num}
                   style={[styles.weightOption, weight === num.toString() && styles.selectedOption]}
                   onPress={() => setWeight(num.toString())}
                 >
@@ -463,9 +468,9 @@ export default function OnboardingScreen() {
           <>
             <Text style={styles.unitDisplay}>cm</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.heightScroll}>
-              {[165,170,175,180,185,190].map((num) => (
-                <TouchableOpacity 
-                  key={num} 
+              {[165, 170, 175, 180, 185, 190].map((num) => (
+                <TouchableOpacity
+                  key={num}
                   style={[styles.heightOption, height === num.toString() && styles.selectedOption]}
                   onPress={() => setHeight(num.toString())}
                 >
@@ -478,70 +483,73 @@ export default function OnboardingScreen() {
       },
       // Paso 4: Goal
       {
-        title: "What is Your Goal?",
+        title: "¿Cuál es tu objetivo?",
         content: (
           <>
             <Text style={styles.setupDescription}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+              Elige el objetivo que mejor describe lo que quieres lograr con tu entrenamiento.
             </Text>
-            <Text style={styles.goalText}>
-              Long jump shot at over, conversion shooting off, and a three-point shot in the last two games.
-            </Text>
+            {['Perder peso', 'Ganar músculo', 'Mejorar resistencia', 'Mantenerme en forma'].map((g) => (
+              <TouchableOpacity key={g} style={[styles.setupOption, goal === g && styles.selectedOption]} onPress={() => setGoal(g)}>
+                <Text style={[styles.setupOptionText, goal === g && styles.selectedOptionText]}>{g}</Text>
+              </TouchableOpacity>
+            ))}
           </>
         )
       },
       // Paso 5: Activity Level
       {
-        title: "Physical Activity Level",
+        title: "Nivel de Actividad Física",
         content: (
           <>
-            <TouchableOpacity 
-              style={[styles.activityOption, activityLevel === 'beginner' && styles.selectedOption]} 
+            <Text style={styles.setupDescription}>¿Qué tan activo eres actualmente?</Text>
+            <TouchableOpacity
+              style={[styles.activityOption, activityLevel === 'beginner' && styles.selectedOption]}
               onPress={() => setActivityLevel('beginner')}
             >
-              <Text style={[styles.activityText, activityLevel === 'beginner' && styles.selectedOptionText]}>Beginner</Text>
+              <Text style={[styles.activityText, activityLevel === 'beginner' && styles.selectedOptionText]}>🟢  Principiante — Poca o ninguna actividad</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.activityOption, activityLevel === 'intermediate' && styles.selectedOption]} 
+            <TouchableOpacity
+              style={[styles.activityOption, activityLevel === 'intermediate' && styles.selectedOption]}
               onPress={() => setActivityLevel('intermediate')}
             >
-              <Text style={[styles.activityText, activityLevel === 'intermediate' && styles.selectedOptionText]}>Intermediate</Text>
+              <Text style={[styles.activityText, activityLevel === 'intermediate' && styles.selectedOptionText]}>🟡  Intermedio — Ejercicio 2-3 días/semana</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.activityOption, activityLevel === 'advanced' && styles.selectedOption]} 
+            <TouchableOpacity
+              style={[styles.activityOption, activityLevel === 'advanced' && styles.selectedOption]}
               onPress={() => setActivityLevel('advanced')}
             >
-              <Text style={[styles.activityText, activityLevel === 'advanced' && styles.selectedOptionText]}>Advanced</Text>
+              <Text style={[styles.activityText, activityLevel === 'advanced' && styles.selectedOptionText]}>🔴  Avanzado — Ejercicio 5+ días/semana</Text>
             </TouchableOpacity>
           </>
         )
       },
       // Paso 6: Profile
       {
-        title: "Fill Your Profile",
+        title: "Completa tu Perfil",
         content: (
           <>
             <Text style={styles.setupDescription}>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+              ¡Ya casi terminas! Cuéntanos cómo te llamas para personalizar tu experiencia.
             </Text>
-            <Text style={styles.inputLabel}>Full name</Text>
-            <TextInput 
+            <Text style={styles.inputLabel}>Nombre completo</Text>
+            <TextInput
               style={styles.profileInput}
               placeholder="Madison Smith"
               placeholderTextColor="#999"
               value={fullName}
               onChangeText={setFullName}
             />
-            <Text style={styles.inputLabel}>Midname</Text>
-            <TextInput 
+            <Text style={styles.inputLabel}>Apodo / Segundo nombre</Text>
+            <TextInput
               style={styles.profileInput}
-              placeholder="Madison"
+              placeholder="Tu apodo"
               placeholderTextColor="#999"
               value={midName}
               onChangeText={setMidName}
             />
-            <Text style={styles.inputLabel}>Email</Text>
-            <TextInput 
+            <Text style={styles.inputLabel}>Correo Electrónico</Text>
+            <TextInput
               style={styles.profileInput}
               placeholder="madison@example.com"
               placeholderTextColor="#999"
@@ -549,10 +557,10 @@ export default function OnboardingScreen() {
               onChangeText={setProfileEmail}
               keyboardType="email-address"
             />
-            <Text style={styles.inputLabel}>Phone number</Text>
-            <TextInput 
+            <Text style={styles.inputLabel}>Número de Teléfono</Text>
+            <TextInput
               style={styles.profileInput}
-              placeholder="+123 567 89000"
+              placeholder="+57 300 000 0000"
               placeholderTextColor="#999"
               value={phoneNumber}
               onChangeText={setPhoneNumber}
@@ -601,7 +609,7 @@ export default function OnboardingScreen() {
 
     return (
       <View style={styles.setupContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.setupBackButton}
           onPress={() => {
             if (setupStep > 0) {
@@ -614,8 +622,8 @@ export default function OnboardingScreen() {
           <Text style={styles.backButtonText}>← Volver</Text>
         </TouchableOpacity>
 
-        <ScrollView 
-          style={styles.setupContent} 
+        <ScrollView
+          style={styles.setupContent}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.setupContentContainer}
         >
@@ -623,7 +631,7 @@ export default function OnboardingScreen() {
           {currentStep.subtitle && <Text style={styles.setupSubtitle}>{currentStep.subtitle}</Text>}
           {currentStep.content}
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.continueButton, isLastStep && styles.finishButton]}
             onPress={handleContinue}
           >
@@ -643,9 +651,9 @@ export default function OnboardingScreen() {
       animationType="slide"
       onRequestClose={() => setMenuVisible(false)}
     >
-      <TouchableOpacity 
-        style={styles.modalOverlay} 
-        activeOpacity={1} 
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
         onPress={() => setMenuVisible(false)}
       >
         <View style={styles.menuContainer}>
@@ -658,8 +666,8 @@ export default function OnboardingScreen() {
           </View>
 
           <ScrollView style={styles.menuItems}>
-            <TouchableOpacity 
-              style={styles.menuItem} 
+            <TouchableOpacity
+              style={styles.menuItem}
               onPress={() => {
                 setCurrentScreen('profile');
                 setMenuVisible(false);
@@ -669,7 +677,7 @@ export default function OnboardingScreen() {
               <Text style={styles.menuItemText}>My Profile</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setCurrentScreen('favorites');
@@ -680,7 +688,7 @@ export default function OnboardingScreen() {
               <Text style={styles.menuItemText}>Favorite</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setCurrentScreen('beginnerVideos');
@@ -691,7 +699,7 @@ export default function OnboardingScreen() {
               <Text style={styles.menuItemText}>Workout Videos</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setCurrentScreen('privacy');
@@ -702,7 +710,7 @@ export default function OnboardingScreen() {
               <Text style={styles.menuItemText}>Privacy Policy</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setCurrentScreen('settings');
@@ -713,7 +721,7 @@ export default function OnboardingScreen() {
               <Text style={styles.menuItemText}>Settings</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setCurrentScreen('help');
@@ -724,7 +732,7 @@ export default function OnboardingScreen() {
               <Text style={styles.menuItemText}>Help</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.menuItem, styles.menuItemLogout]}
               onPress={handleLogout}
             >
@@ -821,7 +829,7 @@ export default function OnboardingScreen() {
 
         <View style={styles.editForm}>
           <Text style={styles.inputLabel}>Full Name</Text>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             value={fullName}
             onChangeText={setFullName}
@@ -829,7 +837,7 @@ export default function OnboardingScreen() {
           />
 
           <Text style={styles.inputLabel}>Email</Text>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             value={profileEmail}
             onChangeText={setProfileEmail}
@@ -838,7 +846,7 @@ export default function OnboardingScreen() {
           />
 
           <Text style={styles.inputLabel}>Phone</Text>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             value={phoneNumber}
             onChangeText={setPhoneNumber}
@@ -847,7 +855,7 @@ export default function OnboardingScreen() {
           />
 
           <Text style={styles.inputLabel}>Address</Text>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             value={address}
             onChangeText={setAddress}
@@ -855,7 +863,7 @@ export default function OnboardingScreen() {
           />
 
           <Text style={styles.inputLabel}>City</Text>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             value={city}
             onChangeText={setCity}
@@ -863,7 +871,7 @@ export default function OnboardingScreen() {
           />
 
           <Text style={styles.inputLabel}>State</Text>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             value={state}
             onChangeText={setState}
@@ -871,7 +879,7 @@ export default function OnboardingScreen() {
           />
 
           <Text style={styles.inputLabel}>Zip Code</Text>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             value={zip}
             onChangeText={setZip}
@@ -880,7 +888,7 @@ export default function OnboardingScreen() {
           />
 
           <Text style={styles.inputLabel}>Country</Text>
-          <TextInput 
+          <TextInput
             style={styles.editInput}
             value={country}
             onChangeText={setCountry}
@@ -892,22 +900,50 @@ export default function OnboardingScreen() {
   );
 
   const renderFavoritesScreen = () => {
-    const categories = [
-      'upper body', 'pull out', 'lower body', 'laced boots', 
-      'combat thigh highs', 'quick strength training', 'bootie dress',
-      'ankle boots', 'lace up boots', 'combat leggings'
-    ];
+    const categories = ['Rutinas', 'Abdominales', 'Pecho', 'Espalda', 'Piernas', 'Brazos', 'Hombros'];
 
-    const items = ['shirt', 'pants', 'shoes', 'accessories'];
+    const routinesByCategory: Record<string, { name: string; duration: string; exercises: number; icon: string }[]> = {
+      'Rutinas': [
+        { name: 'Full Body HIIT', duration: '25 min', exercises: 12, icon: '🔥' },
+        { name: 'Cuerpo Completo Express', duration: '20 min', exercises: 10, icon: '⚡' },
+        { name: 'Cardio + Fuerza', duration: '35 min', exercises: 15, icon: '🎯' },
+      ],
+      'Abdominales': [
+        { name: 'Core en 10 Minutos', duration: '10 min', exercises: 8, icon: '💪' },
+        { name: 'Abs de Acero', duration: '20 min', exercises: 12, icon: '🏋️' },
+      ],
+      'Pecho': [
+        { name: 'Pecho Principiante', duration: '7 min', exercises: 11, icon: '💪' },
+        { name: 'Push-ups Pro', duration: '15 min', exercises: 9, icon: '🔥' },
+      ],
+      'Espalda': [
+        { name: 'Espalda y Postura', duration: '18 min', exercises: 10, icon: '🎯' },
+        { name: 'Pull Day Sin Equipo', duration: '22 min', exercises: 12, icon: '⚡' },
+      ],
+      'Piernas': [
+        { name: 'Piernas en Llamas', duration: '30 min', exercises: 14, icon: '🔥' },
+        { name: 'Sentadillas 200 Reps', duration: '20 min', exercises: 6, icon: '🏋️' },
+      ],
+      'Brazos': [
+        { name: 'Brazos sin Equipo', duration: '15 min', exercises: 9, icon: '💪' },
+        { name: 'Bíceps y Tríceps', duration: '22 min', exercises: 11, icon: '🎯' },
+      ],
+      'Hombros': [
+        { name: 'Hombros Definidos', duration: '18 min', exercises: 10, icon: '🔥' },
+        { name: 'Hombros y Cuello', duration: '14 min', exercises: 8, icon: '⚡' },
+      ],
+    };
+
+    const currentItems = routinesByCategory[favoritesCategory] || [];
 
     return (
       <View style={styles.favoritesContainer}>
         <View style={styles.profileHeader}>
-          <TouchableOpacity onPress={() => setCurrentScreen('home')}>
-            <Text style={styles.backButtonText}>← Back</Text>
+          <TouchableOpacity onPress={() => { setCurrentScreen('home'); setActiveNavTab('home'); }}>
+            <Text style={styles.backButtonText}>← Volver</Text>
           </TouchableOpacity>
-          <Text style={styles.profileHeaderTitle}>Favorites</Text>
-          <View style={{width: 40}} />
+          <Text style={styles.profileHeaderTitle}>Mis Favoritos</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.favoritesCategories}>
@@ -928,23 +964,31 @@ export default function OnboardingScreen() {
 
         <ScrollView style={styles.favoritesContent}>
           <Text style={styles.categoryTitle}>{favoritesCategory}</Text>
-          {items.map((item) => (
-            <TouchableOpacity key={item} style={styles.favoriteItem}>
+          {currentItems.map((item, idx) => (
+            <TouchableOpacity key={idx} style={styles.favoriteItem}
+              onPress={() => Alert.alert(item.name, `${item.exercises} ejercicios • ${item.duration}`, [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: '¡Iniciar!', onPress: () => Alert.alert('¡Vamos!', 'Comenzando rutina...') }
+              ])}>
               <View style={styles.favoriteItemLeft}>
                 <View style={styles.favoriteItemIcon}>
-                  <Text>{item === 'shirt' ? '👕' : item === 'pants' ? '👖' : item === 'shoes' ? '👟' : '🧦'}</Text>
+                  <Text style={{ fontSize: 22 }}>{item.icon}</Text>
                 </View>
-                <Text style={styles.favoriteItemName}>{item}</Text>
+                <View>
+                  <Text style={styles.favoriteItemName}>{item.name}</Text>
+                  <Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>{item.duration} • {item.exercises} ejercicios</Text>
+                </View>
               </View>
-              <TouchableOpacity>
-                <Text style={styles.favoriteItemRemove}>✕</Text>
-              </TouchableOpacity>
+              <Text style={{ color: '#D0FD3E', fontSize: 20 }}>▶</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
     );
   };
+
+
+
 
   const renderSettingsScreen = () => (
     <View style={styles.settingsContainer}>
@@ -953,11 +997,11 @@ export default function OnboardingScreen() {
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.profileHeaderTitle}>Settings</Text>
-        <View style={{width: 40}} />
+        <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.settingsTabs}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.settingsTab, settingsSection === 'notifications' && styles.activeSettingsTab]}
           onPress={() => setSettingsSection('notifications')}
         >
@@ -965,7 +1009,7 @@ export default function OnboardingScreen() {
             Notifications
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.settingsTab, settingsSection === 'password' && styles.activeSettingsTab]}
           onPress={() => setSettingsSection('password')}
         >
@@ -973,7 +1017,7 @@ export default function OnboardingScreen() {
             Password
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.settingsTab, settingsSection === 'general' && styles.activeSettingsTab]}
           onPress={() => setSettingsSection('general')}
         >
@@ -987,13 +1031,13 @@ export default function OnboardingScreen() {
         {settingsSection === 'notifications' && (
           <View style={styles.settingsGroup}>
             <Text style={styles.settingsGroupTitle}>Notification Settings</Text>
-            
+
             <View style={styles.settingItem}>
               <Text style={styles.settingLabel}>General Notification</Text>
               <Switch
                 value={notificationsEnabled}
                 onValueChange={setNotificationsEnabled}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
                 thumbColor={notificationsEnabled ? '#000' : '#f4f3f4'}
               />
             </View>
@@ -1003,7 +1047,7 @@ export default function OnboardingScreen() {
               <Switch
                 value={soundEnabled}
                 onValueChange={setSoundEnabled}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
                 thumbColor={soundEnabled ? '#000' : '#f4f3f4'}
               />
             </View>
@@ -1013,7 +1057,7 @@ export default function OnboardingScreen() {
               <Switch
                 value={dndEnabled}
                 onValueChange={setDndEnabled}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
                 thumbColor={dndEnabled ? '#000' : '#f4f3f4'}
               />
             </View>
@@ -1023,7 +1067,7 @@ export default function OnboardingScreen() {
               <Switch
                 value={vibrateEnabled}
                 onValueChange={setVibrateEnabled}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
                 thumbColor={vibrateEnabled ? '#000' : '#f4f3f4'}
               />
             </View>
@@ -1032,8 +1076,8 @@ export default function OnboardingScreen() {
               <Text style={styles.settingLabel}>Lock Screen</Text>
               <Switch
                 value={false}
-                onValueChange={() => {}}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                onValueChange={() => { }}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
               />
             </View>
 
@@ -1041,8 +1085,8 @@ export default function OnboardingScreen() {
               <Text style={styles.settingLabel}>Background</Text>
               <Switch
                 value={false}
-                onValueChange={() => {}}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                onValueChange={() => { }}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
               />
             </View>
           </View>
@@ -1051,9 +1095,9 @@ export default function OnboardingScreen() {
         {settingsSection === 'password' && (
           <View style={styles.settingsGroup}>
             <Text style={styles.settingsGroupTitle}>Password Settings</Text>
-            
+
             <Text style={styles.inputLabel}>Current Password</Text>
-            <TextInput 
+            <TextInput
               style={styles.passwordInput}
               secureTextEntry
               value={currentPassword}
@@ -1063,7 +1107,7 @@ export default function OnboardingScreen() {
             />
 
             <Text style={styles.inputLabel}>New Password</Text>
-            <TextInput 
+            <TextInput
               style={styles.passwordInput}
               secureTextEntry
               value={newPassword}
@@ -1073,7 +1117,7 @@ export default function OnboardingScreen() {
             />
 
             <Text style={styles.inputLabel}>Confirm New Password</Text>
-            <TextInput 
+            <TextInput
               style={styles.passwordInput}
               secureTextEntry
               value={confirmNewPassword}
@@ -1082,7 +1126,7 @@ export default function OnboardingScreen() {
               placeholderTextColor="#999"
             />
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.updatePasswordButton}
               onPress={() => {
                 if (newPassword !== confirmNewPassword) {
@@ -1103,13 +1147,13 @@ export default function OnboardingScreen() {
         {settingsSection === 'general' && (
           <View style={styles.settingsGroup}>
             <Text style={styles.settingsGroupTitle}>General Settings</Text>
-            
+
             <View style={styles.settingItem}>
               <Text style={styles.settingLabel}>Notifications</Text>
               <Switch
                 value={notificationsEnabled}
                 onValueChange={setNotificationsEnabled}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
                 thumbColor={notificationsEnabled ? '#000' : '#f4f3f4'}
               />
             </View>
@@ -1119,7 +1163,7 @@ export default function OnboardingScreen() {
               <Switch
                 value={powerSavingEnabled}
                 onValueChange={setPowerSavingEnabled}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
                 thumbColor={powerSavingEnabled ? '#000' : '#f4f3f4'}
               />
             </View>
@@ -1129,14 +1173,14 @@ export default function OnboardingScreen() {
               <Switch
                 value={darkThemeEnabled}
                 onValueChange={setDarkThemeEnabled}
-                trackColor={{false: '#767577', true: '#D0FD3E'}}
+                trackColor={{ false: '#767577', true: '#D0FD3E' }}
                 thumbColor={darkThemeEnabled ? '#000' : '#f4f3f4'}
               />
             </View>
 
             <View style={styles.settingItem}>
               <Text style={styles.settingLabel}>Language</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.languageSelector}
                 onPress={() => {
                   const languages = ['English', 'Spanish', 'French', 'German'];
@@ -1191,7 +1235,7 @@ export default function OnboardingScreen() {
             <Text style={styles.backButtonText}>← Volver</Text>
           </TouchableOpacity>
           <Text style={styles.profileHeaderTitle}>Videos de Entrenamiento</Text>
-          <View style={{width: 40}} />
+          <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.videoFilters}>
@@ -1212,11 +1256,11 @@ export default function OnboardingScreen() {
           data={filteredVideos}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.videoItem}
               onPress={() => Linking.openURL(item.youtubeUrl)}
             >
-              <Image 
+              <Image
                 source={{ uri: item.thumbnail }}
                 style={styles.videoThumbnailImg}
                 resizeMode="cover"
@@ -1226,7 +1270,7 @@ export default function OnboardingScreen() {
                 <Text style={styles.videoChannel}>{item.channel}</Text>
                 <View style={styles.videoMeta}>
                   <Text style={[
-                    styles.videoLevel, 
+                    styles.videoLevel,
                     item.level === 'Principiante' && styles.beginnerLevel,
                     item.level === 'Intermedio' && styles.intermediateLevel,
                     item.level === 'Avanzado' && styles.advancedLevel
@@ -1234,7 +1278,7 @@ export default function OnboardingScreen() {
                   <Text style={styles.videoDuration}>{item.duration}</Text>
                 </View>
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.videoPlayButton}
                 onPress={() => Linking.openURL(item.youtubeUrl)}
               >
@@ -1249,136 +1293,313 @@ export default function OnboardingScreen() {
     );
   };
 
-  const renderHomeScreen = () => (
-    <View style={styles.homeContainer}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header con saludo y menú */}
-        <View style={styles.homeHeader}>
-          <View>
-            <Text style={styles.greeting}>Hola, {fullName.split(' ')[0]}</Text>
-            <Text style={styles.subGreeting}>Es hora de entrenar.</Text>
+  const renderChallengeDetailScreen = () => (
+    <View style={styles.challengeDetailContainer}>
+      <ImageBackground
+        source={{ uri: selectedChallenge?.img || 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800' }}
+        style={styles.challengeHeaderImage}
+        imageStyle={{ opacity: 0.6 }}
+      >
+        <View style={styles.challengeHeaderOverlay}>
+          <TouchableOpacity onPress={() => setCurrentScreen('home')} style={styles.challengeBackButton}>
+            <Text style={styles.challengeBackText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.challengeDetailTitle}>{selectedChallenge?.title || 'DESAFÍO'}</Text>
+          <Text style={styles.challengeDetailLevel}>PRINCIPIANTE ✏️</Text>
+
+          <View style={styles.challengeProgressRow}>
+            <Text style={styles.challengeDetailDays}>{selectedChallenge?.days || 28} días restantes</Text>
+            <Text style={styles.challengeDetailPercent}>0%</Text>
           </View>
-          <TouchableOpacity 
-            style={styles.profileIcon}
-            onPress={() => setMenuVisible(true)}
-          >
-            <Text style={styles.profileIconText}>{fullName.charAt(0)}</Text>
-          </TouchableOpacity>
+          <View style={styles.detailProgressBarContainer}>
+            <View style={styles.detailProgressBarFill} />
+          </View>
         </View>
+      </ImageBackground>
 
-        {/* Challenge Tabs */}
-        <View style={styles.challengeTabs}>
-          <TouchableOpacity style={[styles.challengeTab, styles.activeTab]}>
-            <Text style={[styles.tabText, styles.activeTabText]}>Retos Diarios</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.challengeTab}>
-            <Text style={styles.tabText}>Semanales</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.challengeTab}>
-            <Text style={styles.tabText}>Mensuales</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.challengeDetailContentBg}>
+        <ScrollView style={styles.challengeDetailContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.trainerCard}>
+            <Image source={{ uri: 'https://images.unsplash.com/photo-1571019614242-c5c5adee9f50?w=100&h=100&fit=crop' }} style={styles.trainerAvatarImg} />
+            <Text style={styles.trainerMessage}>¡Empieza tu viaje de fitness corporal total con energía!</Text>
+          </View>
 
-        {/* Beginner Videos Card */}
-        <TouchableOpacity 
-          style={styles.videoCard}
-          onPress={() => setCurrentScreen('beginnerVideos')}
-        >
-          <View style={styles.videoCardContent}>
-            <Text style={styles.videoCardTitle}>🎥 Principiantes</Text>
-            <Text style={styles.videoCardSubtitle}>509 videos para ti</Text>
-            <View style={styles.videoCardButton}>
-              <Text style={styles.videoCardButtonText}>Ver Rutinas</Text>
+          {[1, 2, 3].map((week) => (
+            <View key={week} style={styles.weekContainer}>
+              <View style={styles.weekHeader}>
+                <Text style={styles.weekTitle}>⚡ SEMANA {week}</Text>
+                <Text style={styles.weekCount}>{week === 1 ? '1/7' : ''}</Text>
+              </View>
+              <View style={styles.weekLineIndicator} />
+              <View style={styles.weekDaysGrid}>
+                {[1, 2, 3, 4, 5, 6, 7].map((day) => (
+                  <TouchableOpacity key={day} style={styles.dayCircle}>
+                    {day === 7 ? <Text style={styles.trophyIcon}>🏆</Text> : <Text style={styles.dayText}>{day}</Text>}
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Weekly Challenge Card */}
-        <View style={styles.challengeCard}>
-          <Text style={styles.challengeCardTitle}>Reto Semanal</Text>
-          <Text style={styles.challengeNumber}>Reto #1</Text>
-          <View style={styles.challengeProgress}>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '60%' }]} />
-            </View>
-            <Text style={styles.progressText}>60%</Text>
-          </View>
-          <TouchableOpacity style={styles.joinButton}>
-            <Text style={styles.joinButtonText}>Unirse al Reto</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>3</Text>
-            <Text style={styles.statLabel}>Días</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>450</Text>
-            <Text style={styles.statLabel}>Calorías</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>75</Text>
-            <Text style={styles.statLabel}>Minutos</Text>
-          </View>
-        </View>
-
-        {/* Articles & Tips */}
-        <Text style={styles.sectionTitle}>Artículos y Consejos</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.articlesScroll}>
-          <TouchableOpacity style={styles.articleCard} onPress={() => Linking.openURL('https://www.healthline.com/nutrition/healthy-eating-tips')}>
-            <Image source={{uri: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=300&h=200&fit=crop'}} style={styles.articleImageReal} />
-            <Text style={styles.articleTitle}>Dietas Saludables</Text>
-            <Text style={styles.articleAuthor}>Por Nutricionista</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.articleCard} onPress={() => Linking.openURL('https://www.healthline.com/nutrition/pre-workout-nutrition')}>
-            <Image source={{uri: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=300&h=200&fit=crop'}} style={styles.articleImageReal} />
-            <Text style={styles.articleTitle}>Nutrición Deportiva...</Text>
-            <Text style={styles.articleAuthor}>Por Experto</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.articleCard} onPress={() => Linking.openURL('https://www.healthline.com/health/fitness-exercise/morning-workout')}>
-            <Image source={{uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop'}} style={styles.articleImageReal} />
-            <Text style={styles.articleTitle}>Entrenar de mañana...</Text>
-            <Text style={styles.articleAuthor}>Por Coach Mike</Text>
-          </TouchableOpacity>
+          ))}
+          <View style={{ height: 100 }} />
         </ScrollView>
+
+        <View style={styles.challengeFooter}>
+          <TouchableOpacity style={styles.vamosButton} onPress={() => Alert.alert('¡Vamos!', 'Comenzando el entrenamiento.')}>
+            <Text style={styles.vamosButtonText}>VAMOS</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderRoutineDetailScreen = () => {
+    const exercisesByType: Record<string, { name: string; time: string; img: string }[]> = {
+      Abdominales: [
+        { name: 'Crunch Abdominal', time: '00:30', img: 'https://images.unsplash.com/photo-1571019614242-c5c5adee9f50?w=200' },
+        { name: 'Plancha Frontal', time: '00:45', img: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=200' },
+        { name: 'Elevación de Piernas', time: '00:30', img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200' },
+        { name: 'Bicicleta Abdominal', time: '00:30', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200' },
+        { name: 'Mountain Climbers', time: '00:30', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=200' },
+      ],
+      Brazo: [
+        { name: 'Saltos De Tijera', time: '00:30', img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=200' },
+        { name: 'Squats', time: '00:30', img: 'https://images.unsplash.com/photo-1571019614242-c5c5adee9f50?w=200' },
+        { name: 'Flexiones en la Pared', time: '00:30', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200' },
+        { name: 'Curl de Bíceps', time: '00:45', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=200' },
+        { name: 'Fondos de Tríceps', time: '00:30', img: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=200' },
+      ],
+      Pecho: [
+        { name: 'Flexiones Clásicas', time: '00:30', img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200' },
+        { name: 'Flexiones Diamante', time: '00:30', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200' },
+        { name: 'Press de Pecho', time: '00:45', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=200' },
+        { name: 'Flexiones Declinadas', time: '00:30', img: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=200' },
+        { name: 'Aperturas', time: '00:30', img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200' },
+      ],
+      Piernas: [
+        { name: 'Sentadillas', time: '00:30', img: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=200' },
+        { name: 'Zancadas', time: '00:30', img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200' },
+        { name: 'Elevación de Talones', time: '00:30', img: 'https://images.unsplash.com/photo-1571019614242-c5c5adee9f50?w=200' },
+        { name: 'Sentadilla Sumo', time: '00:45', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200' },
+        { name: 'Puente de Glúteos', time: '00:30', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=200' },
+      ],
+      Hombros: [
+        { name: 'Press Militar', time: '00:30', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200' },
+        { name: 'Elevaciones Laterales', time: '00:30', img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200' },
+        { name: 'Plancha con Toque', time: '00:45', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=200' },
+        { name: 'Remo al Mentón', time: '00:30', img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=200' },
+        { name: 'Pájaros', time: '00:30', img: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=200' },
+      ],
+    };
+
+    // Detect body part from routine title
+    const bodyPart = Object.keys(exercisesByType).find(k => selectedRoutine?.title?.includes(k)) || 'Brazo';
+    const defaultExercises = exercisesByType[bodyPart];
+
+    return (
+      <View style={styles.routineDetailContainerWrapper}>
+        <Image
+          source={{ uri: selectedRoutine?.img || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800' }}
+          style={styles.routineHeaderImg}
+        />
+        <View style={styles.routineHeaderActions}>
+          <TouchableOpacity onPress={() => setCurrentScreen('home')} style={styles.routineActionBtn}>
+            <Text style={styles.routineActionText}>←</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.routineActionBtn}>
+            <Text style={styles.routineActionText}>⋮</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.routineContentCard}>
+          <Text style={styles.routineTitleDay}>1° DÍA</Text>
+
+          <View style={styles.routineStatsRowFlex}>
+            <View style={styles.routineStatBoxFlex}>
+              <Text style={styles.routineStatValueFlex}>{selectedRoutine?.duration || 8} min</Text>
+              <Text style={styles.routineStatLabelFlex}>Duración</Text>
+            </View>
+            <View style={styles.routineStatBoxFlex}>
+              <Text style={styles.routineStatValueFlex}>{selectedRoutine?.exercises || 10}</Text>
+              <Text style={styles.routineStatLabelFlex}>Ejercicios</Text>
+            </View>
+          </View>
+
+          <View style={styles.routineListHeaderSection}>
+            <Text style={styles.routineListTitleTextBig}>Ejercicios</Text>
+            <TouchableOpacity><Text style={styles.routineListChangeLink}>Cambiar {'>'}</Text></TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+            {defaultExercises.map((ex, idx) => (
+              <View key={idx} style={styles.routineExerciseRowFlex}>
+                <Text style={styles.dragHandleTextEl}>≡</Text>
+                <Image source={{ uri: ex.img }} style={styles.routineExImgList} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.routineExNameList}>{ex.name}</Text>
+                  <Text style={styles.routineExTimeList}>{ex.time}</Text>
+                </View>
+                <Text style={styles.swapIconTextEl}>⇄</Text>
+              </View>
+            ))}
+          </ScrollView>
+
+          <View style={styles.routineFloatingBtnWrap}>
+            <TouchableOpacity style={styles.routineFloatingBtnClick} onPress={() => Alert.alert('¡Vamos!', 'Iniciando entrenamiento...')}>
+              <Text style={styles.routineFloatingBtnTextLabel}>Comienzo</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  const renderHomeScreen = () => (
+    <View style={[styles.homeContainer, { backgroundColor: '#F8F9FD' }]}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.homeHeaderFixed}>
+          <Text style={styles.homeMainTitle}>EJERCICIOS EN CASA</Text>
+          <Text style={styles.fireIcon}>🔥</Text>
+          <TouchableOpacity style={styles.proButton}><Text style={styles.proButtonText}>👑 PRO↑</Text></TouchableOpacity>
+        </View>
+
+        <View style={styles.challengeTabsRow}>
+          {['Diarios', 'Semanales', 'Mensuales'].map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.challengeTab, activeChallengeTab === tab && styles.activeTab]}
+              onPress={() => setActiveChallengeTab(tab)}
+            >
+              <Text style={[styles.tabText, activeChallengeTab === tab && styles.activeTabText]}>{tab}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {activeChallengeTab === 'Diarios' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.challengesScroll}>
+            <TouchableOpacity style={[styles.mainChallengeCard, { backgroundColor: '#1565C0' }]} onPress={() => { setSelectedChallenge({ title: 'DESAFÍO DE CUERPO ENTERO', days: 28, img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=500' }); setCurrentScreen('challengeDetail'); }}>
+              <Text style={styles.mainChallengeDays}>28 DÍAS</Text>
+              <Text style={styles.mainChallengeTitle}>DESAFÍO DE{'\n'}CUERPO{'\n'}ENTERO</Text>
+              <Text style={styles.mainChallengeDesc}>Tonifica todos los grupos musculares en 4 semanas.</Text>
+              <View style={styles.mainChallengeBtn}><Text style={styles.mainChallengeBtnText}>COMIENZO</Text></View>
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400' }} style={styles.challengeCardImgBg} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.mainChallengeCard, { backgroundColor: '#1A237E' }]} onPress={() => { setSelectedChallenge({ title: 'QUEMA GRASA INTENSA', days: 14, img: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=500' }); setCurrentScreen('challengeDetail'); }}>
+              <Text style={styles.mainChallengeDays}>14 DÍAS</Text>
+              <Text style={styles.mainChallengeTitle}>QUEMA{'\n'}GRASA{'\n'}INTENSA</Text>
+              <Text style={styles.mainChallengeDesc}>HIIT diario para quemar grasa rápidamente.</Text>
+              <View style={styles.mainChallengeBtn}><Text style={styles.mainChallengeBtnText}>COMIENZO</Text></View>
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400' }} style={styles.challengeCardImgBg} />
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+        {activeChallengeTab === 'Semanales' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.challengesScroll}>
+            <TouchableOpacity style={[styles.mainChallengeCard, { backgroundColor: '#1B5E20' }]} onPress={() => { setSelectedChallenge({ title: 'TREN SUPERIOR MUSCULOSO', days: 30, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500' }); setCurrentScreen('challengeDetail'); }}>
+              <Text style={styles.mainChallengeDays}>30 DÍAS</Text>
+              <Text style={styles.mainChallengeTitle}>TREN{'\n'}SUPERIOR{'\n'}MUSCULOSO</Text>
+              <Text style={styles.mainChallengeDesc}>Esculpe el tren superior — ¡sin equipo!</Text>
+              <View style={[styles.mainChallengeBtn, { backgroundColor: '#D0FD3E' }]}><Text style={[styles.mainChallengeBtnText, { color: '#000' }]}>COMIENZO</Text></View>
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1571019614242-c5c5adee9f50?w=400' }} style={styles.challengeCardImgBg} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.mainChallengeCard, { backgroundColor: '#4A148C' }]} onPress={() => { setSelectedChallenge({ title: 'DESAFÍO DE ABDOMINALES', days: 30, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500' }); setCurrentScreen('challengeDetail'); }}>
+              <Text style={styles.mainChallengeDays}>30 DÍAS</Text>
+              <Text style={styles.mainChallengeTitle}>DESAFÍO{'\n'}ABDOMI{'\n'}NALES</Text>
+              <Text style={styles.mainChallengeDesc}>Esculpe tus abdominales marcados en poco tiempo.</Text>
+              <View style={[styles.mainChallengeBtn, { backgroundColor: '#D0FD3E' }]}><Text style={[styles.mainChallengeBtnText, { color: '#000' }]}>COMIENZO</Text></View>
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400' }} style={styles.challengeCardImgBg} />
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+        {activeChallengeTab === 'Mensuales' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.challengesScroll}>
+            <TouchableOpacity style={[styles.mainChallengeCard, { backgroundColor: '#B71C1C' }]} onPress={() => { setSelectedChallenge({ title: 'TRANSFORMACIÓN TOTAL', days: 60, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=500' }); setCurrentScreen('challengeDetail'); }}>
+              <Text style={styles.mainChallengeDays}>60 DÍAS</Text>
+              <Text style={styles.mainChallengeTitle}>TRANSFOR{'\n'}MACIÓN{'\n'}TOTAL</Text>
+              <Text style={styles.mainChallengeDesc}>El reto más exigente para cambiar tu cuerpo.</Text>
+              <View style={[styles.mainChallengeBtn, { backgroundColor: '#FFF' }]}><Text style={[styles.mainChallengeBtnText, { color: '#B71C1C' }]}>COMIENZO</Text></View>
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400' }} style={styles.challengeCardImgBg} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.mainChallengeCard, { backgroundColor: '#E65100' }]} onPress={() => { setSelectedChallenge({ title: 'ATLETA EN 90 DÍAS', days: 90, img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=500' }); setCurrentScreen('challengeDetail'); }}>
+              <Text style={styles.mainChallengeDays}>90 DÍAS</Text>
+              <Text style={styles.mainChallengeTitle}>ATLETA{'\n'}EN{'\n'}90 DÍAS</Text>
+              <Text style={styles.mainChallengeDesc}>Programa profesional para convertirte en atleta.</Text>
+              <View style={[styles.mainChallengeBtn, { backgroundColor: '#FFF' }]}><Text style={[styles.mainChallengeBtnText, { color: '#E65100' }]}>COMIENZO</Text></View>
+              <Image source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400' }} style={styles.challengeCardImgBg} />
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+
+        <Text style={styles.bodyFocusTitle}>Centrado en el cuerpo</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bodyFocusTabs}>
+          {['Abdominales', 'Brazo', 'Pecho', 'Piernas', 'Hombros'].map((tab) => (
+            <TouchableOpacity key={tab} onPress={() => setActiveBodyTab(tab)} style={[styles.bodyTab, activeBodyTab === tab && styles.bodyTabActive]}>
+              <Text style={[styles.bodyTabText, activeBodyTab === tab && styles.bodyTabTextActive]}>{tab}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={styles.exercisesList}>
+          {(() => {
+            const exerciseData: Record<string, { levels: { name: string; duration: number; exercises: number; img: string; stars: number }[] }> = {
+              Abdominales: {
+                levels: [
+                  { name: 'Abdominales Principiante', duration: 10, exercises: 12, img: 'https://images.unsplash.com/photo-1571019614242-c5c5adee9f50?w=200&h=200&fit=crop', stars: 2 },
+                  { name: 'Abdominales Intermedio', duration: 18, exercises: 20, img: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=200&h=200&fit=crop', stars: 3 },
+                  { name: 'Abdominales Avanzado', duration: 25, exercises: 24, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200&h=200&fit=crop', stars: 4 },
+                ]
+              },
+              Brazo: {
+                levels: [
+                  { name: 'Brazo Principiante', duration: 16, exercises: 19, img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=200&h=200&fit=crop', stars: 2 },
+                  { name: 'Brazo Intermedio', duration: 22, exercises: 25, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200&h=200&fit=crop', stars: 3 },
+                  { name: 'Brazo Avanzado', duration: 30, exercises: 28, img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=200&h=200&fit=crop', stars: 4 },
+                ]
+              },
+              Pecho: {
+                levels: [
+                  { name: 'Pecho Principiante', duration: 12, exercises: 14, img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&h=200&fit=crop', stars: 2 },
+                  { name: 'Pecho Intermedio', duration: 20, exercises: 22, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200&h=200&fit=crop', stars: 3 },
+                  { name: 'Pecho Avanzado', duration: 28, exercises: 26, img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=200&h=200&fit=crop', stars: 4 },
+                ]
+              },
+              Piernas: {
+                levels: [
+                  { name: 'Piernas Principiante', duration: 14, exercises: 16, img: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=200&h=200&fit=crop', stars: 2 },
+                  { name: 'Piernas Intermedio', duration: 24, exercises: 22, img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200&h=200&fit=crop', stars: 3 },
+                  { name: 'Piernas Avanzado', duration: 32, exercises: 30, img: 'https://images.unsplash.com/photo-1571019614242-c5c5adee9f50?w=200&h=200&fit=crop', stars: 4 },
+                ]
+              },
+              Hombros: {
+                levels: [
+                  { name: 'Hombros Principiante', duration: 12, exercises: 15, img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=200&h=200&fit=crop', stars: 2 },
+                  { name: 'Hombros Intermedio', duration: 20, exercises: 20, img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=200&h=200&fit=crop', stars: 3 },
+                  { name: 'Hombros Avanzado', duration: 26, exercises: 24, img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=200&h=200&fit=crop', stars: 4 },
+                ]
+              },
+            };
+            const currentExercises = exerciseData[activeBodyTab]?.levels || exerciseData['Brazo'].levels;
+            return currentExercises.map((item, idx) => (
+              <TouchableOpacity key={idx} style={styles.exerciseRow} onPress={() => { setSelectedRoutine({ title: item.name, duration: item.duration, exercises: item.exercises, img: item.img.replace('200', '800') }); setCurrentScreen('routineDetail'); }}>
+                <Image source={{ uri: item.img }} style={styles.exerciseListImg} />
+                <View style={styles.exerciseListInfo}>
+                  <Text style={styles.exerciseListTitle}>{item.name}</Text>
+                  <Text style={styles.exerciseListMeta}>{item.duration} min • {item.exercises} Ejercicios</Text>
+                  <Text style={styles.exerciseListLightning}>{'⚡'.repeat(item.stars)} <Text style={{ opacity: 0.3 }}>{'⚡'.repeat(Math.max(0, 4 - item.stars))}</Text></Text>
+                </View>
+              </TouchableOpacity>
+            ));
+          })()}
+        </View>
+
+        <View style={{ height: 80 }} />
       </ScrollView>
 
-{/* Bottom Navigation */}
-<View style={styles.bottomNav}>
-  <TouchableOpacity style={styles.navItem}>
-    <Text style={[styles.navIcon, styles.activeNavIcon]}>🏠</Text>
-    <Text style={[styles.navText, styles.activeNavText]}>Inicio</Text>
-  </TouchableOpacity>
-  <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('beginnerVideos')}>
-    <Text style={styles.navIcon}>🎥</Text>
-    <Text style={styles.navText}>Videos</Text>
-  </TouchableOpacity>
-  <TouchableOpacity style={styles.navItem} onPress={() => setCurrentScreen('favorites')}>
-    <Text style={styles.navIcon}>❤️</Text>
-    <Text style={styles.navText}>Favoritos</Text>
-  </TouchableOpacity>
-  <TouchableOpacity 
-    style={styles.navItem}
-    onPress={() => setMenuVisible(true)}
-  >
-    <Text style={styles.navIcon}>👤</Text>
-    <Text style={styles.navText}>Perfil</Text>
-  </TouchableOpacity>
-</View>
-
-      {/* Bottom hint for tabs */}
-
-      {/* Menú flotante */}
-      {renderMenu()}
+      <View style={{ height: 20 }} />
     </View>
   );
 
   const renderScreen = () => {
-    switch(currentScreen) {
+    switch (currentScreen) {
       case 'welcome':
         return renderWelcomeScreen();
       case 'login':
@@ -1389,6 +1610,10 @@ export default function OnboardingScreen() {
         return renderSetupScreen();
       case 'home':
         return renderHomeScreen();
+      case 'challengeDetail':
+        return renderChallengeDetailScreen();
+      case 'routineDetail':
+        return renderRoutineDetailScreen();
       case 'profile':
         return renderProfileScreen();
       case 'editProfile':
@@ -1404,22 +1629,22 @@ export default function OnboardingScreen() {
     }
   };
 
- return (
-  <View style={styles.container}>
-    <StatusBar barStyle="light-content" />
-    {currentScreen !== 'home' && currentScreen !== 'profile' && currentScreen !== 'editProfile' && 
-     currentScreen !== 'favorites' && currentScreen !== 'settings' && currentScreen !== 'beginnerVideos' ? (
-      <ImageBackground 
-        source={require('../../assets/images/beautiful-young-sporty-woman-training-workout-gym 3.png')} 
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        <View style={styles.overlay}>
-          {renderScreen()}
-        </View>
-      </ImageBackground>
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      {currentScreen !== 'home' && currentScreen !== 'profile' && currentScreen !== 'editProfile' &&
+        currentScreen !== 'favorites' && currentScreen !== 'settings' && currentScreen !== 'beginnerVideos' && currentScreen !== 'challengeDetail' && currentScreen !== 'routineDetail' ? (
+        <ImageBackground
+          source={require('../../assets/images/beautiful-young-sporty-woman-training-workout-gym 3.png')}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        >
+          <View style={styles.overlay}>
+            {renderScreen()}
+          </View>
+        </ImageBackground>
       ) : (
-      renderScreen()
+        renderScreen()
       )}
     </View>
   );
@@ -1428,10 +1653,10 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   backgroundImage: { flex: 1 },
-  overlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
-    justifyContent: 'space-between', 
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 60,
   },
@@ -1440,15 +1665,15 @@ const styles = StyleSheet.create({
   logoContainer: { alignItems: 'center' },
   fbLogo: { color: '#B0A2F2', fontSize: 100, fontWeight: '900', fontStyle: 'italic', lineHeight: 100 },
   fitBodyText: { color: '#D0FD3E', fontSize: 45, fontWeight: 'bold', marginTop: -20, letterSpacing: 3 },
-  button: { 
-    backgroundColor: '#D0FD3E', 
-    paddingVertical: 18, 
-    paddingHorizontal: 60, 
+  button: {
+    backgroundColor: '#D0FD3E',
+    paddingVertical: 18,
+    paddingHorizontal: 60,
     borderRadius: 35,
     elevation: 8
   },
   buttonText: { color: '#000', fontSize: 18, fontWeight: 'bold' },
-  
+
   // Estilos para login y registro
   loginContainer: {
     width: '100%',
@@ -1461,50 +1686,50 @@ const styles = StyleSheet.create({
     color: '#D0FD3E',
     fontSize: 16,
   },
-  headerTitle: { 
-    color: '#D0FD3E', 
-    textAlign: 'center', 
-    fontSize: 24, 
-    fontWeight: 'bold', 
-    marginBottom: 30 
+  headerTitle: {
+    color: '#D0FD3E',
+    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 30
   },
-  authCard: { 
-    backgroundColor: '#B0A2F2', 
-    padding: 20, 
-    borderRadius: 25, 
-    marginBottom: 20 
+  authCard: {
+    backgroundColor: '#B0A2F2',
+    padding: 20,
+    borderRadius: 25,
+    marginBottom: 20
   },
-  label: { 
-    color: '#000', 
-    fontWeight: 'bold', 
-    marginBottom: 5 
+  label: {
+    color: '#000',
+    fontWeight: 'bold',
+    marginBottom: 5
   },
-  input: { 
-    backgroundColor: '#FFF', 
-    borderRadius: 10, 
-    padding: 12, 
+  input: {
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 15,
     color: '#000'
   },
-  loginBtn: { 
-    backgroundColor: '#333', 
-    padding: 15, 
-    borderRadius: 25, 
-    alignItems: 'center' 
+  loginBtn: {
+    backgroundColor: '#333',
+    padding: 15,
+    borderRadius: 25,
+    alignItems: 'center'
   },
-  loginBtnText: { 
-    color: '#FFF', 
-    fontWeight: 'bold' 
+  loginBtnText: {
+    color: '#FFF',
+    fontWeight: 'bold'
   },
-  googleBtn: { 
-    backgroundColor: '#FFF', 
-    padding: 15, 
-    borderRadius: 25, 
-    alignItems: 'center', 
-    marginTop: 15 
+  googleBtn: {
+    backgroundColor: '#FFF',
+    padding: 15,
+    borderRadius: 25,
+    alignItems: 'center',
+    marginTop: 15
   },
-  googleText: { 
-    color: '#4285F4', 
+  googleText: {
+    color: '#4285F4',
     fontWeight: 'bold',
     fontSize: 18,
   },
@@ -1754,6 +1979,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
   },
+  challengeTabsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    backgroundColor: '#EBEBEB',
+    borderRadius: 25,
+    padding: 4,
+  },
   challengeTabs: {
     flexDirection: 'row',
     marginBottom: 20,
@@ -1762,21 +1995,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 10,
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 22,
   },
   activeTab: {
-    borderBottomColor: '#D0FD3E',
+    backgroundColor: '#1565C0',
   },
   tabText: {
-    color: '#FFF',
+    color: '#555',
     fontSize: 14,
-    opacity: 0.7,
+    fontWeight: '600',
   },
   activeTabText: {
-    color: '#D0FD3E',
-    opacity: 1,
-    fontWeight: '600',
+    color: '#FFF',
+    fontWeight: '700',
   },
   videoCard: {
     backgroundColor: 'rgba(176,162,242,0.2)',
@@ -2393,7 +2624,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   videoPlayer: {
-    aspectRatio: 16/9,
+    aspectRatio: 16 / 9,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 20,
     justifyContent: 'center',
@@ -2445,4 +2676,409 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     backgroundColor: 'rgba(176,162,242,0.3)',
   },
+  homeHeaderFixed: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 15,
+  },
+  homeMainTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#000',
+  },
+  fireIcon: {
+    fontSize: 22,
+    marginHorizontal: 5,
+  },
+  proButton: {
+    backgroundColor: '#FFECCC',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 'auto',
+  },
+  proButtonText: {
+    color: '#D28500',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  challengesScroll: {
+    paddingLeft: 20,
+    marginBottom: 25,
+  },
+  mainChallengeCard: {
+    width: 300,
+    height: 300,
+    borderRadius: 20,
+    padding: 20,
+    marginRight: 15,
+    overflow: 'hidden',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  mainChallengeDays: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 5,
+    zIndex: 2,
+  },
+  mainChallengeTitle: {
+    color: '#FFF',
+    fontSize: 26,
+    fontWeight: '900',
+    lineHeight: 30,
+    marginBottom: 10,
+    zIndex: 2,
+  },
+  mainChallengeDesc: {
+    color: '#FFF',
+    fontSize: 14,
+    opacity: 0.9,
+    lineHeight: 20,
+    marginBottom: 20,
+    zIndex: 2,
+    width: '60%',
+  },
+  mainChallengeBtn: {
+    backgroundColor: '#FFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    alignSelf: 'flex-start',
+    zIndex: 2,
+  },
+  mainChallengeBtnText: {
+    color: '#0055ff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  challengeCardImgBg: {
+    position: 'absolute',
+    right: -50,
+    bottom: -20,
+    width: 280,
+    height: 380,
+    opacity: 0.8,
+  },
+  bodyFocusTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  bodyFocusTabs: {
+    paddingLeft: 20,
+    marginBottom: 20,
+  },
+  bodyTab: {
+    backgroundColor: '#EBEBEB',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    height: 36,
+  },
+  bodyTabActive: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#0055ff',
+  },
+  bodyTabText: {
+    color: '#666',
+    fontWeight: '600',
+  },
+  bodyTabTextActive: {
+    color: '#0055ff',
+  },
+  exercisesList: {
+    paddingHorizontal: 20,
+  },
+  exerciseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  exerciseListImg: {
+    width: 80,
+    height: 80,
+    borderRadius: 15,
+    marginRight: 15,
+  },
+  exerciseListInfo: {
+    flex: 1,
+  },
+  exerciseListTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 5,
+  },
+  exerciseListMeta: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 5,
+  },
+  exerciseListLightning: {
+    color: '#0055ff',
+    fontSize: 12,
+  },
+  challengeDetailContainer: { flex: 1, backgroundColor: '#000' },
+  challengeHeaderImage: {
+    height: 280,
+    width: '100%',
+    backgroundColor: '#333'
+  },
+  challengeHeaderOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    padding: 20,
+    justifyContent: 'flex-end',
+  },
+  challengeBackButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+  },
+  challengeBackText: {
+    color: '#FFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  challengeDetailTitle: {
+    color: '#FFF',
+    fontSize: 32,
+    fontWeight: '900',
+    marginBottom: 5,
+  },
+  challengeDetailLevel: {
+    color: '#FFF',
+    fontSize: 14,
+    opacity: 0.8,
+    marginBottom: 20,
+  },
+  challengeProgressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  challengeDetailDays: {
+    color: '#FFF',
+    fontSize: 14,
+  },
+  challengeDetailPercent: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  detailProgressBarContainer: {
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 3,
+  },
+  detailProgressBarFill: {
+    width: '1%',
+    height: '100%',
+    backgroundColor: '#0055ff',
+    borderRadius: 3,
+  },
+  challengeDetailContentBg: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: -25,
+  },
+  challengeDetailContent: {
+    flex: 1,
+    padding: 20,
+  },
+  trainerCard: {
+    flexDirection: 'row',
+    backgroundColor: '#EBEFF5',
+    padding: 15,
+    borderRadius: 20,
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  trainerAvatarImg: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+  },
+  trainerMessage: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+  },
+  weekContainer: {
+    marginBottom: 25,
+  },
+  weekHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weekTitle: {
+    color: '#0055ff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  weekCount: {
+    color: '#666',
+    fontSize: 14,
+  },
+  weekLineIndicator: {
+    position: 'absolute',
+    left: 20,
+    top: 30,
+    bottom: -15,
+    width: 2,
+    backgroundColor: 'rgba(0,85,255,0.2)',
+  },
+  weekDaysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    padding: 20,
+    borderRadius: 20,
+  },
+  dayCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  dayText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+  },
+  trophyIcon: {
+    fontSize: 20,
+  },
+  challengeFooter: {
+    padding: 20,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderTopColor: '#EEE',
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+  },
+  vamosButton: {
+    backgroundColor: '#0055ff',
+    paddingVertical: 18,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  vamosButtonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  routineDetailContainerWrapper: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  routineHeaderImg: {
+    width: '100%',
+    height: 350,
+  },
+  routineHeaderActions: {
+    position: 'absolute',
+    top: 50,
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  routineActionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  routineActionText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  routineContentCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    marginTop: -30,
+    paddingTop: 30,
+  },
+  routineTitleDay: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginLeft: 20,
+    marginBottom: 20,
+  },
+  routineStatsRowFlex: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    marginBottom: 25,
+  },
+  routineStatBoxFlex: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 15,
+    padding: 15,
+    width: '48%',
+    alignItems: 'center',
+  },
+  routineStatValueFlex: { fontSize: 18, fontWeight: 'bold' },
+  routineStatLabelFlex: { fontSize: 13, color: '#888', marginTop: 4 },
+  routineListHeaderSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  routineListTitleTextBig: { fontSize: 20, fontWeight: 'bold' },
+  routineListChangeLink: { color: '#0055ff', fontSize: 14, fontWeight: '600' },
+  routineExerciseRowFlex: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    paddingBottom: 15,
+  },
+  dragHandleTextEl: { color: '#ccc', fontSize: 24, marginRight: 15 },
+  swapIconTextEl: { color: '#aaa', fontSize: 20, marginLeft: 'auto' },
+  routineExImgList: { width: 60, height: 60, marginRight: 15, borderRadius: 10 },
+  routineExNameList: { fontSize: 16, fontWeight: 'bold' },
+  routineExTimeList: { fontSize: 14, color: '#888', marginTop: 4 },
+  routineFloatingBtnWrap: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: '#eee',
+  },
+  routineFloatingBtnClick: {
+    backgroundColor: '#0055ff',
+    borderRadius: 30,
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  routineFloatingBtnTextLabel: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });

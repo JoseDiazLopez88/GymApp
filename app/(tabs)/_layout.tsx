@@ -8,20 +8,22 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#D0FD3E',
-        tabBarInactiveTintColor: 'rgba(255,255,255,0.4)',
+        tabBarActiveTintColor: '#3B82F6',
+        tabBarInactiveTintColor: 'rgba(0,0,0,0.4)',
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: '#1C1C1E',
-          borderTopWidth: 0,
+          backgroundColor: '#FFFFFF',
+          borderTopWidth: 1,
+          borderTopColor: '#F0F0F0',
           height: Platform.OS === 'ios' ? 85 : 65,
           paddingBottom: Platform.OS === 'ios' ? 25 : 10,
           paddingTop: 8,
-          elevation: 0,
-          shadowOpacity: 0,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -32,10 +34,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Ejercicios',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
-              <Text style={[styles.icon, { color }]}>🏠</Text>
+              <Text style={[styles.icon, { color }]}>💪</Text>
             </View>
           ),
         }}
@@ -62,6 +64,17 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="perfil"
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.iconContainer, focused && styles.activeIconContainer]}>
+              <Text style={[styles.icon, { color }]}>👤</Text>
+            </View>
+          ),
+        }}
+      />
     </Tabs>
   );
 }
@@ -75,7 +88,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   activeIconContainer: {
-    backgroundColor: 'rgba(208, 253, 62, 0.15)',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
   icon: {
     fontSize: 20,
